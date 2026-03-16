@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 type SiteHeaderProps = {
-  currentPath: "/" | "/donate";
+  currentPath: "/" | "/about" | "/donate";
 };
 
 export default function SiteHeader({ currentPath }: SiteHeaderProps) {
@@ -29,6 +29,16 @@ export default function SiteHeader({ currentPath }: SiteHeaderProps) {
                 }`}
               >
                 Home
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/about"
+                className={`inline-block border-b-2 px-0.5 py-1 text-base font-semibold no-underline ${
+                  currentPath === "/about" ? "border-[var(--brand)]" : "border-transparent"
+                }`}
+              >
+                About
               </Link>
             </li>
             <li>
