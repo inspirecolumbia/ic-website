@@ -15,7 +15,7 @@ export default function Home() {
               </h1>
               <div className="flex justify-start md:justify-end">
                 <Image
-                  src="/cm_logo_transparent.png"
+                  src="/InspireBlack.png"
                   alt="Inspire Columbia logo"
                   width={840}
                   height={840}
