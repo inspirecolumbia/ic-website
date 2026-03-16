@@ -5,8 +5,8 @@ export default function DonationsPage() {
   return (
     <>
       <SiteHeader currentPath="/donations" />
-      <main className="bg-[var(--surface)] text-[var(--ink)]">
-        <section className="min-h-[calc(100vh-76px)] bg-[var(--surface-alt)] py-14 md:py-[4.5rem]">
+      <main className="text-[var(--ink)]">
+        <section className="min-h-[calc(100vh-76px)] bg-[rgba(220,236,255,0.55)] py-14 md:py-[4.5rem]">
           <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
             <p className="m-0 text-[0.9rem] font-bold uppercase tracking-[0.08em] text-[var(--ink-muted)]">
               Support Our Mission

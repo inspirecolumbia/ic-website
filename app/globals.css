@@ -3,14 +3,14 @@
 :root {
   --font-sans: "Avenir Next", "Segoe UI", "Helvetica Neue", Helvetica, sans-serif;
   --font-serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, serif;
-  --ink: #202125;
-  --ink-muted: #444952;
-  --surface: #f2f4f7;
-  --surface-alt: #dfe7f2;
-  --surface-strong: #e6ded2;
-  --brand: #7d1f1f;
-  --brand-hover: #651818;
-  --line: #c7ced8;
+  --ink: #1a2033;
+  --ink-muted: #4a5570;
+  --surface: #f7f9ff;
+  --surface-alt: #e8f0ff;
+  --surface-strong: #dce8ff;
+  --brand: #1d4ed8;
+  --brand-hover: #1e40af;
+  --line: #c3d2f0;
 }
 
 *,
@@ -23,4 +23,7 @@ body {
   margin: 0;
   font-family: var(--font-sans), sans-serif;
   line-height: 1.5;
+  background: linear-gradient(135deg, #b8d4ff 0%, #deeaff 35%, #ffffff 60%, #c8dcff 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
 }

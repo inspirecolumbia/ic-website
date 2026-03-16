@@ -6,8 +6,8 @@ export default function Home() {
   return (
     <>
       <SiteHeader currentPath="/" />
-      <main className="bg-[var(--surface)] text-[var(--ink)]">
-        <section className="bg-[var(--surface-alt)] py-14 md:py-[4.5rem]">
+      <main className="text-[var(--ink)]">
+        <section className="bg-[rgba(220,236,255,0.55)] py-14 md:py-[4.5rem]">
           <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-6 px-6 md:px-8">
             <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-[minmax(0,1fr)_minmax(210px,330px)]">
               <h1 className="m-0 max-w-[18ch] font-[var(--font-serif)] text-[clamp(2rem,5vw,4.2rem)] leading-[1.1] font-semibold">
@@ -31,7 +31,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="bg-white py-13 md:py-16" id="events">
+        <section className="bg-[rgba(255,255,255,0.55)] py-13 md:py-16" id="events">
           <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
             <h2 className="mb-4 mt-0 font-[var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
               Our Events
@@ -60,7 +60,7 @@ export default function Home() {
                 first standard TEDx event in Columbia for over 10 years.
               </p>
               <a
-                className="inline-block border-2 border-[var(--brand)] bg-white px-6 py-3 font-bold text-[var(--brand)] no-underline hover:bg-[#f9eeee] focus-visible:bg-[#f9eeee]"
+                className="inline-block border-2 border-[var(--brand)] bg-white px-6 py-3 font-bold text-[var(--brand)] no-underline hover:bg-[#eef2ff] focus-visible:bg-[#eef2ff]"
                 href= "https://tedxcongareevista.com"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -71,7 +71,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="bg-[var(--surface-strong)] py-13 md:py-16" id="recruitment">
+        <section className="bg-[rgba(200,224,255,0.5)] py-13 md:py-16" id="recruitment">
           <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
             <h2 className="mb-4 mt-0 font-[var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
               2026 Associate Recruitment
