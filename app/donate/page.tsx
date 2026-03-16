@@ -26,6 +26,20 @@ export default function DonationsPage() {
             >
               Donate via Zeffy
             </a>
+            <p className="mt-10 mb-5 max-w-[65ch] text-[clamp(1.02rem,2.2vw,1.3rem)] text-[var(--ink-muted)]">
+              We use Zeffy for fee-free donations, ensuring that 100% of your donation makes it to us.
+              Zeffy may ask you to tip the payment processor, but this is optional and can be declined at checkout.
+              As a 501(c)3 nonprofit corporation, all donations to Inspire Columbia are fully tax-deductible.
+              <br />
+              <br />
+              If you have any questions about donating, or would like to explore other ways to support our work, please{" "}
+              <a
+                className="underline underline-offset-4"
+                href="mailto:info@inspirecolumbia.org"
+              >
+                contact us
+              </a>
+            </p>
           </div>
         </section>
       </main>

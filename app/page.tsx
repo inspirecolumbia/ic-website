@@ -86,7 +86,7 @@ export default function Home() {
             </p>
             <a
               className="inline-block border-2 border-transparent bg-[var(--brand)] px-6 py-3 font-bold text-white no-underline hover:bg-[var(--brand-hover)] focus-visible:bg-[var(--brand-hover)]"
-              href="https://forms.google.com/"
+              href="https://forms.gle/PCvBcX8hAV6hnCFL7"
               target="_blank"
               rel="noopener noreferrer"
             >
