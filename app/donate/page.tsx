@@ -20,7 +20,7 @@ export default function DonationsPage() {
             </p>
             <a
               className="mt-6 inline-block border-2 border-transparent bg-[var(--brand)] px-6 py-3 font-bold text-white no-underline hover:bg-[var(--brand-hover)] focus-visible:bg-[var(--brand-hover)]"
-              href="https://www.zeffy.com/en-US/donation-form/support-educational-events-in-columbia-sc"
+              href="https://www.zeffy.com/en-US/donation-form/support-events-that-inspire-in-columbia-sc"
               target="_blank"
               rel="noopener noreferrer"
             >
