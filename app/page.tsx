@@ -49,7 +49,7 @@ export default function Home() {
             </p>
             <div className="mt-6 border-t border-[var(--line)] pt-6">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div className="border border-[var(--line)] bg-[rgba(255,255,255,0.7)] p-6 flex flex-col gap-4">
+                <div className="border border-[var(--line)] bg-[rgba(255,255,255,0.7)] p-6 flex flex-col gap-4 rounded-lg shadow-sm transition-all duration-150 hover:-translate-y-2 hover:shadow-md">
                   <Image
                     src="/tedxcv.png"
                     alt="TEDxCongaree Vista logo"
@@ -63,7 +63,7 @@ export default function Home() {
                     first standard TEDx event in Columbia for over 10 years.
                   </p>
                   <a
-                    className="mt-auto inline-block self-start border-2 border-[var(--brand)] bg-white px-6 py-3 font-bold text-[var(--brand)] no-underline hover:bg-[#eef2ff] focus-visible:bg-[#eef2ff]"
+                    className="inline-block self-start rounded-lg border-2 border-[var(--brand)] bg-white px-6 py-3 font-bold text-[var(--brand)] no-underline shadow-sm transition-all duration-300 hover:-translate-y-1 hover:bg-[#eef2ff] hover:shadow-md active:translate-y-px active:shadow-sm"
                     href="https://tedxcongareevista.com"
                     target="_blank"
                     rel="noopener noreferrer"
@@ -90,7 +90,7 @@ export default function Home() {
               If you are interested in learning more, please join our interest list to receive updates about the application process and upcoming events.
             </p>
             <a
-              className="inline-block border-2 border-transparent bg-[var(--brand)] px-6 py-3 font-bold text-white no-underline hover:bg-[var(--brand-hover)] focus-visible:bg-[var(--brand-hover)]"
+              className="inline-block rounded-lg border-2 border-transparent bg-[var(--brand)] px-6 py-3 font-bold text-white no-underline shadow-sm transition-all duration-300 hover:-translate-y-1 hover:bg-[var(--brand-hover)] hover:shadow-md active:translate-y-px active:shadow-sm"
               href="https://forms.gle/PCvBcX8hAV6hnCFL7"
               target="_blank"
               rel="noopener noreferrer"

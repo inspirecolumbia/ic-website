@@ -19,7 +19,7 @@ export default function DonationsPage() {
               and keep programs accessible to everyone.
             </p>
             <a
-              className="mt-6 inline-block border-2 border-transparent bg-[var(--brand)] px-6 py-3 font-bold text-white no-underline hover:bg-[var(--brand-hover)] focus-visible:bg-[var(--brand-hover)]"
+              className="mt-6 inline-block rounded-lg border-2 border-transparent bg-[var(--brand)] px-6 py-3 font-bold text-white no-underline shadow-sm transition-all duration-300 hover:-translate-y-1 hover:bg-[var(--brand-hover)] hover:shadow-md active:translate-y-px active:shadow-sm"
               href="https://www.zeffy.com/en-US/donation-form/support-events-that-inspire-in-columbia-sc"
               target="_blank"
               rel="noopener noreferrer"
