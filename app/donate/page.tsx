@@ -1,5 +1,10 @@
+import type { Metadata } from "next";
 import Footer from "@/components/Footer";
 import SiteHeader from "../../components/SiteHeader";
+
+export const metadata: Metadata = {
+  title: "Donate",
+};
 
 export default function DonationsPage() {
   return (

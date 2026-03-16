@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Inspire Columbia",
+  title: {
+    default: "Inspire Columbia",
+    template: "%s | Inspire Columbia",
+  },
   description: "A youth-run nonprofit focused on hosting events and serving our community.",
   icons: {
     icon: [
