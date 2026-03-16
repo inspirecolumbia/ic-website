@@ -11,7 +11,7 @@ export default function DonationsPage() {
             <p className="m-0 text-[0.9rem] font-bold uppercase tracking-[0.08em] text-[var(--ink-muted)]">
               Support Our Mission
             </p>
-            <h1 className="mb-4 mt-4 max-w-[18ch] font-[var(--font-serif)] text-[clamp(2rem,5vw,4.2rem)] leading-[1.1] font-semibold">
+            <h1 className="mb-4 mt-4 max-w-[18ch] [font-family:var(--font-serif)] text-[clamp(2rem,5vw,4.2rem)] leading-[1.1] font-semibold">
               Help us fund community-first programming.
             </h1>
             <p className="mb-5 max-w-[65ch] text-[clamp(1.02rem,2.2vw,1.3rem)] text-[var(--ink-muted)]">

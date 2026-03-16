@@ -10,7 +10,7 @@ export default function Home() {
         <section className="bg-[rgba(220,236,255,0.55)] py-14 md:py-[4.5rem]">
           <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-6 px-6 md:px-8">
             <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-[minmax(0,1fr)_minmax(210px,330px)]">
-              <h1 className="m-0 max-w-[18ch] font-[var(--font-serif)] text-[clamp(2rem,5vw,4.2rem)] leading-[1.1] font-semibold">
+              <h1 className="m-0 max-w-[18ch] [font-family:var(--font-serif)] text-[clamp(2rem,5vw,4.2rem)] leading-[1.1] font-semibold">
                 Events and opportunities that inspire positive change.
               </h1>
               <div className="flex justify-start md:justify-end">
@@ -33,7 +33,7 @@ export default function Home() {
 
         <section className="bg-[rgba(255,255,255,0.55)] py-13 md:py-16" id="events">
           <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
-            <h2 className="mb-4 mt-0 font-[var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
+            <h2 className="mb-4 mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
               Our Events
             </h2>
             <p className="mb-5 max-w-[70ch] text-[1.15rem]">
@@ -73,7 +73,7 @@ export default function Home() {
 
         <section className="bg-[rgba(200,224,255,0.5)] py-13 md:py-16" id="recruitment">
           <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
-            <h2 className="mb-4 mt-0 font-[var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
+            <h2 className="mb-4 mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
               2026 Associate Recruitment
             </h2>
             <p className="mb-5 max-w-[70ch] text-[1.15rem]">
