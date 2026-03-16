@@ -39,6 +39,7 @@ export default function DonationsPage() {
               >
                 contact us
               </a>
+                .
             </p>
           </div>
         </section>
