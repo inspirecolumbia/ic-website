@@ -5,6 +5,16 @@ import SiteHeader from "@/components/SiteHeader";
 
 export const metadata: Metadata = {
   title: "About",
+  description: "Learn about Inspire Columbia — a 501(c)(3) nonprofit led by students in Columbia, South Carolina, producing leadership events and educational programming.",
+  openGraph: {
+    title: "About | Inspire Columbia",
+    description: "Learn about Inspire Columbia — a 501(c)(3) nonprofit led by students in Columbia, South Carolina, producing leadership events and educational programming.",
+    url: "https://inspirecolumbia.org/about",
+  },
+  twitter: {
+    title: "About | Inspire Columbia",
+    description: "Learn about Inspire Columbia — a 501(c)(3) nonprofit led by students in Columbia, South Carolina, producing leadership events and educational programming.",
+  },
 };
 
 const boardMembers = [
@@ -51,7 +61,7 @@ export default function AboutPage() {
               About Inspire Columbia
             </h1>
             <p className="mt-6 mb-0 max-w-[65ch] text-[clamp(1.02rem,2.2vw,1.3rem)] text-[var(--ink-muted)]">
-              Inspire Columbia Inc. is a 501(c)(3) nonprofit organization led by students and
+              Inspire Columbia is a 501(c)(3) nonprofit organization led by students and
               community members in Columbia, South Carolina. We produce leadership events,
               community workshops, and civic programming that brings people together around
               positive change.

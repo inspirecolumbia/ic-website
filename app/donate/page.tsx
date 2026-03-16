@@ -4,6 +4,16 @@ import SiteHeader from "../../components/SiteHeader";
 
 export const metadata: Metadata = {
   title: "Donate",
+  description: "Support Inspire Columbia's community events and youth leadership programs. 100% of your tax-deductible donation goes directly to our mission in Columbia, SC.",
+  openGraph: {
+    title: "Donate | Inspire Columbia",
+    description: "Support Inspire Columbia's community events and youth leadership programs. 100% of your tax-deductible donation goes directly to our mission in Columbia, SC.",
+    url: "https://inspirecolumbia.org/donate",
+  },
+  twitter: {
+    title: "Donate | Inspire Columbia",
+    description: "Support Inspire Columbia's community events and youth leadership programs. 100% of your tax-deductible donation goes directly to our mission in Columbia, SC.",
+  },
 };
 
 export default function DonationsPage() {
