@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 type SiteHeaderProps = {
-  currentPath: "/" | "/donations";
+  currentPath: "/" | "/donate";
 };
 
 export default function SiteHeader({ currentPath }: SiteHeaderProps) {
@@ -33,9 +33,9 @@ export default function SiteHeader({ currentPath }: SiteHeaderProps) {
             </li>
             <li>
               <Link
-                href="/donations"
+                href="/donate"
                 className={`inline-block border-b-2 px-0.5 py-1 text-base font-semibold no-underline ${
-                  currentPath === "/donations" ? "border-[var(--brand)]" : "border-transparent"
+                  currentPath === "/donate" ? "border-[var(--brand)]" : "border-transparent"
                 }`}
               >
                 Donate
