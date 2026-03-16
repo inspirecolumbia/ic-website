@@ -11,7 +11,7 @@ export default function SiteHeader({ currentPath }: SiteHeaderProps) {
       <div className="mx-auto flex min-h-[76px] w-full max-w-[1100px] items-center justify-between gap-8 px-6 md:px-8">
         <Link href="/" className="flex items-center no-underline">
           <Image
-            src="/InspireBlack.png"
+            src="/InspireBlackLogo.png"
             alt="Inspire Columbia"
             height={36}
             width={180}

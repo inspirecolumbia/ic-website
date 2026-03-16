@@ -15,7 +15,7 @@ export default function Home() {
               </h1>
               <div className="flex justify-start md:justify-end">
                 <Image
-                  src="/InspireBlack.png"
+                  src="/InspireBlackLogo.png"
                   alt="Inspire Columbia logo"
                   width={840}
                   height={840}
@@ -24,8 +24,8 @@ export default function Home() {
                 />
               </div>
             </div>
-            <p className="m-0 max-w-[65ch] text-[clamp(1.02rem,2.2vw,1.3rem)] text-[var(--ink-muted)]">
-              Inspire Columbia Inc. is a 501(c)(3) nonprofit that connects students, families, and
+            <p className="m-0 text-[clamp(1.02rem,2.2vw,1.3rem)] text-[var(--ink-muted)]">
+              Inspire Columbia (formerly known as ChangeMakers Events) is a 501(c)(3) nonprofit that connects students, families, and
               local leaders through meaningful programs in Columbia, South Carolina.
             </p>
           </div>
@@ -36,37 +36,42 @@ export default function Home() {
             <h2 className="mb-4 mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
               Our Events
             </h2>
-            <p className="mb-5 max-w-[70ch] text-[1.15rem]">
-              We are a youth-led organization that works to produce leadership panels, community workshops, and public storytelling
-              events designed to bring people together around civic engagement.
+            <p className="mb-5 text-[1.15rem]">
+              We are youth-powered and forward focused, bringing together the next generation of students and community leaders
+              who work tirelessly to highlight the changemakers of Columbia that are building the future today. Our team dedicates time, energy,
+              and creativity to build platforms that bring people together through the power of change.
             </p>
-            <p className="mb-8 max-w-[70ch] text-[1.15rem]">
+            <p className="mb-8 text-[1.15rem]">
               We partner with volunteers, educators, and local organizations to produce events that
               are accessible, informative, and action-oriented for attendees of all ages.
+              Funds raised through sponsorships and ticket sales stay right here in the local community, helping cover essential
+              costs like printing, signage, promotion, audio/visual needs, food, and venue expenses for our educational events.
             </p>
-            <div className="mt-6 mb-10 border-t border-[var(--line)] pt-6">
-              <Image
-                src="/tedxcv.png"
-                alt="TEDxCongaree Vista logo"
-                width={1400}
-                height={504}
-                className="mb-10 block h-auto w-[440px] md:w-[620px]"
-              />
-              <p className="ml-4 mb-4 max-w-[55ch] text-[1.15rem]">
-                <strong>March 14th, 2026</strong>
-                <br />
-                <br />
-                TEDxCongaree Vista is the flagship production of Inspire Columbia, and is the
-                first standard TEDx event in Columbia for over 10 years.
-              </p>
-              <a
-                className="inline-block border-2 border-[var(--brand)] bg-white px-6 py-3 font-bold text-[var(--brand)] no-underline hover:bg-[#eef2ff] focus-visible:bg-[#eef2ff]"
-                href= "https://tedxcongareevista.com"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Visit Event Website
-              </a>
+            <div className="mt-6 border-t border-[var(--line)] pt-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div className="border border-[var(--line)] bg-[rgba(255,255,255,0.7)] p-6 flex flex-col gap-4">
+                  <Image
+                    src="/tedxcv.png"
+                    alt="TEDxCongaree Vista logo"
+                    width={1400}
+                    height={504}
+                    className="block h-auto w-full max-w-[340px]"
+                  />
+                  <p className="m-0 text-[1.05rem]">
+                    <strong>March 14th, 2026</strong><br /><br />
+                    TEDxCongaree Vista is the flagship production of Inspire Columbia, and is the
+                    first standard TEDx event in Columbia for over 10 years.
+                  </p>
+                  <a
+                    className="mt-auto inline-block self-start border-2 border-[var(--brand)] bg-white px-6 py-3 font-bold text-[var(--brand)] no-underline hover:bg-[#eef2ff] focus-visible:bg-[#eef2ff]"
+                    href="https://tedxcongareevista.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Visit Event Website
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -76,11 +81,11 @@ export default function Home() {
             <h2 className="mb-4 mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
               2026 Associate Recruitment
             </h2>
-            <p className="mb-5 max-w-[70ch] text-[1.15rem]">
+            <p className="mb-5 text-[1.15rem]">
               We are preparing the next recruitment cycle for associates who want to help to early valuable leadership skills,
                support community outreach, and contribute to our mission-driven programming.
             </p>
-            <p className="mb-5 max-w-[70ch] text-[1.15rem]">
+            <p className="mb-5 text-[1.15rem]">
               Our application opens in May, and it is open to all students in the Columbia, South Carolina area. 
               If you are interested in learning more, please join our interest list to receive updates about the application process and upcoming events.
             </p>
