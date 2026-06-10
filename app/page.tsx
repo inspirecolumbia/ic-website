@@ -71,6 +71,28 @@ export default function Home() {
                     Visit Event Website
                   </a>
                 </div>
+                <div className="border border-[var(--line)] bg-[rgba(255,255,255,0.7)] p-6 flex flex-col gap-4 rounded-lg shadow-sm transition-all duration-150 hover:-translate-y-2 hover:shadow-md">
+                  <Image
+                    src="/screwupnights-placeholder.svg"
+                    alt="SCrewUp Nights logo placeholder"
+                    width={1400}
+                    height={504}
+                    className="block h-auto w-full max-w-[340px]"
+                  />
+                  <p className="m-0 text-[1.05rem]">
+                    SCrewUp Nights is a new Inspire Columbia project celebrating the stories
+                    behind setbacks, bringing the community together to share and learn from
+                    the moments that didn&apos;t go as planned.
+                  </p>
+                  <a
+                    className="inline-block self-start rounded-lg border-2 border-[var(--brand)] bg-white px-6 py-3 font-bold text-[var(--brand)] no-underline shadow-sm transition-all duration-300 hover:-translate-y-1 hover:bg-[#eef2ff] hover:shadow-md active:translate-y-px active:shadow-sm"
+                    href="https://screwupnights.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Visit Event Website
+                  </a>
+                </div>
               </div>
             </div>
           </div>
