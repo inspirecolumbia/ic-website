@@ -42,7 +42,7 @@ const boardMembers = [
   {
     name: "Darssan Eswaramoorthi",
     title: "President",
-    bio: "Darssan is a Computer Engineering student at the University of South Carolina and previously served as Executive Producer of TEDxCongaree Vista.",
+    bio: "Darssan is a Computer Engineering graduate of the University of South Carolina and previously served as Executive Producer of TEDxCongaree Vista.",
     headshot: "/headshots/darssan.jpg",
   },
   {
@@ -62,6 +62,12 @@ const boardMembers = [
     title: "Board Member",
     bio: "Owen is a Computer Science and Mathematics student at the University of South Carolina and previously served as Curation Director of TEDxCongaree Vista.",
     headshot: "/headshots/owen.jpg",
+  },
+  {
+    name: "Tim George",
+    title: "Board Member",
+    bio: "Tim is a Public Health student at the University of South Carolina and previously served as a Curation Assistant for TEDxCongaree Vista.",
+    headshot: "/headshots/tim.jpg",
   },
 ];
 
