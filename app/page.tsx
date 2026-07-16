@@ -71,6 +71,7 @@ export default function Home() {
                     Visit Event Website
                   </a>
                 </div>
+                  {/*
                 <div className="border border-[var(--line)] bg-[rgba(255,255,255,0.7)] p-6 flex flex-col gap-4 rounded-lg shadow-sm transition-all duration-150 hover:-translate-y-2 hover:shadow-md">
                   <Image
                     src="/screwupnights-placeholder.svg"
@@ -93,6 +94,7 @@ export default function Home() {
                     Visit Event Website
                   </a>
                 </div>
+                  */}
               </div>
             </div>
           </div>
