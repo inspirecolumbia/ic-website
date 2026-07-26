@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { useRef, useEffect, useState } from "react";
 
 type SiteHeaderProps = {
-  currentPath: "/" | "/about" | "/donate";
+  currentPath: string;
 };
 
 const navLinks = [
