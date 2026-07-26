@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import ScrollToTop from "../components/ScrollToTop";
+import Footer from "../components/Footer";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://inspirecolumbia.org"),
@@ -58,6 +59,7 @@ export default function RootLayout({
       <body>
         <ScrollToTop />
         {children}
+        <Footer />
       </body>
     </html>
   );
