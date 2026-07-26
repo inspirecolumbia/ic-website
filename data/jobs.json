@@ -25,38 +25,6 @@
       "Authorized to work for a US nonprofit",
       "Reliable availability for weekly team commitments"
     ],
-    "applyUrl": "https://forms.gle/CF5wu5vbbgYotFQf9",
-    "learnMoreUrl": "/associate-program",
-    "learnMoreLabel": "Learn more about the Associate Program"
-  },
-  {
-    "slug": "high-school-fellow",
-    "title": "High School Fellow",
-    "role": "High School Fellowship",
-    "location": "Columbia, SC",
-    "commitmentType": "Part-time, semester-long",
-    "postingDate": "2026-07-01",
-    "quickFacts": [
-      { "label": "Location", "value": "Columbia, SC" },
-      { "label": "Commitment", "value": "Part-time, semester-long" },
-      { "label": "Posted", "value": "July 1, 2026" },
-      { "label": "Program", "value": "High School Fellowship" }
-    ],
-    "description": "The High School Fellowship gives Columbia-area high schoolers early exposure to nonprofit and event work, shadowing IC teams and taking on a project of their own over the semester.",
-    "responsibilities": [
-      "Shadow an IC team and assist with team deliverables each week",
-      "Attend weekly fellow check-ins and periodic all-fellow trainings",
-      "Complete a semester capstone project with a Lead Organizer mentor",
-      "Support at least one IC event during the semester"
-    ],
-    "qualifications": [
-      "Currently enrolled at a Columbia-area high school",
-      "Live in or near Columbia, SC",
-      "Reliable availability for weekly commitments",
-      "Interest in nonprofit, events, or community work"
-    ],
-    "applyUrl": "https://forms.gle/HSFellowPlaceholder",
-    "learnMoreUrl": "/associate-program",
-    "learnMoreLabel": "Learn more about our programs"
+    "applyUrl": "https://forms.gle/CF5wu5vbbgYotFQf9"
   }
 ]

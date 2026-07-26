@@ -17,16 +17,15 @@ export type Job = {
   responsibilities: string[];
   qualifications: string[];
   applyUrl: string;
-  learnMoreUrl?: string;
-  learnMoreLabel?: string;
 };
 
-function ApplyButton({ href }: { href: string }) {
+function ApplyButton({ jobTitle, href }: { jobTitle: string; href: string }) {
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
+      aria-label={`Apply for ${jobTitle} (opens in a new tab)`}
       className="inline-block bg-[var(--brand)] px-6 py-3 text-[1rem] font-semibold text-white no-underline transition-colors duration-200 hover:bg-[var(--brand-hover)]"
     >
       Apply now
@@ -35,26 +34,32 @@ function ApplyButton({ href }: { href: string }) {
 }
 
 export default function JobPosting({ job }: { job: Job }) {
-  const postedDate = new Date(job.postingDate).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
   return (
     <main className="text-[var(--ink)]">
       <section className="bg-[rgba(220,236,255,0.55)] py-14 md:py-[4.5rem]">
         <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
           <nav aria-label="Breadcrumb" className="mb-6 text-sm text-[var(--ink-muted)]">
-            <Link href="/" className="no-underline hover:underline">
-              Home
-            </Link>
-            <span className="mx-2">/</span>
-            <Link href="/jobs" className="no-underline hover:underline">
-              Jobs
-            </Link>
-            <span className="mx-2">/</span>
-            <span className="text-[var(--ink)]">{job.title}</span>
+            <ol className="m-0 flex list-none items-center p-0">
+              <li>
+                <Link href="/" className="no-underline hover:underline">
+                  Home
+                </Link>
+              </li>
+              <li aria-hidden="true" className="mx-2">
+                /
+              </li>
+              <li>
+                <Link href="/jobs" className="no-underline hover:underline">
+                  Jobs
+                </Link>
+              </li>
+              <li aria-hidden="true" className="mx-2">
+                /
+              </li>
+              <li aria-current="page" className="text-[var(--ink)]">
+                {job.title}
+              </li>
+            </ol>
           </nav>
 
           <p className="m-0 text-[0.9rem] font-bold uppercase tracking-[0.08em] text-[var(--ink-muted)]">
@@ -68,34 +73,19 @@ export default function JobPosting({ job }: { job: Job }) {
             {job.quickFacts.map((fact) => (
               <span
                 key={fact.label}
-                className="border border-[var(--line)] bg-[rgba(255,255,255,0.7)] px-3 py-1 text-[0.85rem] font-medium text-[var(--ink-muted)]"
+                className="border border-[var(--line)] bg-[rgba(255,255,255,0.7)] px-3 py-1.5 text-[0.85rem] font-medium text-[var(--ink-muted)]"
               >
                 {fact.label}: {fact.value}
               </span>
             ))}
           </div>
 
-          <ApplyButton href={job.applyUrl} />
+          <ApplyButton jobTitle={job.title} href={job.applyUrl} />
         </div>
       </section>
 
-      <div className="mx-auto flex h-[280px] w-full max-w-[1100px] items-center justify-center border-2 border-dashed border-[var(--line)] bg-[var(--surface-strong)] text-[0.75rem] font-bold uppercase tracking-widest text-[var(--ink-muted)] md:my-0">
-        Hero Photo
-      </div>
-
       <section className="bg-[rgba(255,255,255,0.55)] py-13 md:py-16">
         <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
-          <div className="mb-10 grid grid-cols-1 gap-6 border border-[var(--line)] bg-[rgba(255,255,255,0.7)] p-6 sm:grid-cols-2 lg:grid-cols-4">
-            {job.quickFacts.map((fact) => (
-              <div key={fact.label}>
-                <p className="m-0 text-sm font-semibold uppercase tracking-[0.08em] text-[var(--brand)]">
-                  {fact.label}
-                </p>
-                <p className="mb-0 mt-0.5 text-[1rem] text-[var(--ink)]">{fact.value}</p>
-              </div>
-            ))}
-          </div>
-
           <h2 className="mb-2 mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
             About the role
           </h2>
@@ -121,21 +111,8 @@ export default function JobPosting({ job }: { job: Job }) {
             ))}
           </ul>
 
-          {job.learnMoreUrl && (
-            <p className="mb-10 text-[1rem]">
-              <Link
-                href={job.learnMoreUrl}
-                className="font-semibold text-[var(--brand)] no-underline hover:underline"
-              >
-                {job.learnMoreLabel ?? "Learn more"}
-              </Link>
-            </p>
-          )}
-
-          <p className="mb-10 text-sm text-[var(--ink-muted)]">Posted {postedDate}</p>
-
           <div className="flex flex-wrap items-center gap-4 border-t border-[var(--line)] pt-8">
-            <ApplyButton href={job.applyUrl} />
+            <ApplyButton jobTitle={job.title} href={job.applyUrl} />
           </div>
         </div>
       </section>
