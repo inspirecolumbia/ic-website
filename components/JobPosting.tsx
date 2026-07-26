@@ -36,7 +36,7 @@ function ApplyButton({ jobTitle, href }: { jobTitle: string; href: string }) {
 export default function JobPosting({ job }: { job: Job }) {
   return (
     <main className="text-[var(--ink)]">
-      <section className="bg-[rgba(220,236,255,0.55)] py-14 md:py-[4.5rem]">
+      <section className="bg-[var(--surface-blue)] py-14 md:py-[4.5rem]">
         <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
           <nav aria-label="Breadcrumb" className="mb-6 text-sm text-[var(--ink-muted)]">
             <ol className="m-0 flex list-none items-center p-0">
@@ -73,7 +73,7 @@ export default function JobPosting({ job }: { job: Job }) {
             {job.quickFacts.map((fact) => (
               <span
                 key={fact.label}
-                className="border border-[var(--line)] bg-[rgba(255,255,255,0.7)] px-3 py-1.5 text-[0.85rem] font-medium text-[var(--ink-muted)]"
+                className="border border-[var(--line)] bg-[var(--card)] px-3 py-1.5 text-[0.85rem] font-medium text-[var(--ink-muted)]"
               >
                 {fact.label}: {fact.value}
               </span>
@@ -84,7 +84,7 @@ export default function JobPosting({ job }: { job: Job }) {
         </div>
       </section>
 
-      <section className="bg-[rgba(255,255,255,0.55)] py-13 md:py-16">
+      <section className="bg-[var(--surface)] py-13 md:py-16">
         <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
           <h2 className="mb-2 mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
             About the role
@@ -117,9 +117,9 @@ export default function JobPosting({ job }: { job: Job }) {
         </div>
       </section>
 
-      <section className="bg-[rgba(240,246,255,0.55)] py-13 md:py-16">
+      <section className="bg-[var(--surface-blue)] py-13 md:py-16">
         <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
-          <div className="border border-[var(--line)] bg-[rgba(255,255,255,0.7)] p-6">
+          <div className="border border-[var(--line)] bg-[var(--card)] p-6">
             <p className="m-0 text-[1.15rem] font-bold">Not the right fit?</p>
             <p className="mb-4 mt-1 text-[0.95rem] text-[var(--ink-muted)]">
               See every open role at Inspire Columbia.

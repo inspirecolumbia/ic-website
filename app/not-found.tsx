@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Footer from "@/components/Footer";
 import SiteHeader from "@/components/SiteHeader";
 
 export const metadata: Metadata = {
@@ -12,7 +11,7 @@ export default function NotFound() {
     <>
       <SiteHeader currentPath="" />
       <main className="text-[var(--ink)]">
-        <section className="bg-[rgba(220,236,255,0.55)] py-24 md:py-[6rem]">
+        <section className="bg-[var(--surface-blue)] py-24 md:py-[6rem]">
           <div className="mx-auto w-full max-w-[1100px] px-6 text-center md:px-8">
             <p className="m-0 text-[0.9rem] font-bold uppercase tracking-[0.08em] text-[var(--ink-muted)]">
               404
@@ -32,7 +31,6 @@ export default function NotFound() {
           </div>
         </section>
       </main>
-      <Footer />
     </>
   );
 }

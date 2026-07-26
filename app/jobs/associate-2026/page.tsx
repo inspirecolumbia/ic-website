@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Footer from "@/components/Footer";
 import SiteHeader from "@/components/SiteHeader";
 import JobPosting, { type Job } from "@/components/JobPosting";
 import jobs from "@/data/jobs.json";
@@ -25,7 +24,6 @@ export default function Associate2026Page() {
     <>
       <SiteHeader currentPath="/jobs/associate-2026" />
       <JobPosting job={job} />
-      <Footer />
     </>
   );
 }
