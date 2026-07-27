@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import SiteHeader from "../../components/SiteHeader";
+
+const impactPhotos = [
+  { src: "/pictures/tedx-team-lineup-applause.jpg", alt: "The Inspire Columbia team applauding together on stage at TEDxCongaree Vista" },
+  { src: "/pictures/tedx-speaker-networking.jpg", alt: "A TEDxCongaree Vista speaker networking with attendees after their talk" },
+  { src: "/pictures/tedx-staff-candid-coffee.jpg", alt: "Inspire Columbia staff sharing a candid moment over coffee" },
+];
 
 export const metadata: Metadata = {
   title: "Donate",
@@ -20,7 +27,7 @@ export default function DonationsPage() {
     <>
       <SiteHeader currentPath="/donate" />
       <main className="text-[var(--ink)]">
-        <section className="min-h-[calc(100vh-76px)] bg-[var(--surface-blue)] py-14 md:py-[4.5rem]">
+        <section className="bg-[var(--surface-blue)] py-14 md:py-[4.5rem]">
           <div className="mx-auto w-full max-w-[760px] px-6 md:px-8">
             <div className="max-w-[65ch]">
               <div>
@@ -58,6 +65,30 @@ export default function DonationsPage() {
                     .
                 </p>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-[var(--surface)] py-13 md:py-16">
+          <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
+            <h2 className="mb-8 mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
+              Your Support in Action
+            </h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {impactPhotos.map((photo) => (
+                <div
+                  key={photo.src}
+                  className="aspect-[4/3] overflow-hidden rounded-[10px]"
+                >
+                  <Image
+                    src={photo.src}
+                    alt={photo.alt}
+                    width={800}
+                    height={600}
+                    className="block h-full w-full object-cover"
+                  />
+                </div>
+              ))}
             </div>
           </div>
         </section>

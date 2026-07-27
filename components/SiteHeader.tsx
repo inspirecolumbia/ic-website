@@ -15,6 +15,7 @@ const navLinks = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About Us" },
   { href: "/leadership", label: "Leadership" },
+  { href: "/jobs", label: "Jobs" },
 ];
 
 export default function SiteHeader({ currentPath }: SiteHeaderProps) {
