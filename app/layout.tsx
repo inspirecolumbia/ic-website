@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 import ScrollToTop from "../components/ScrollToTop";
 import Footer from "../components/Footer";
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://inspirecolumbia.org"),
@@ -55,7 +59,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={cn("font-sans", geist.variable)}>
       <body>
         <ScrollToTop />
         {children}
