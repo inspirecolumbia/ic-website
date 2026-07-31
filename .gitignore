@@ -43,5 +43,3 @@ next-env.d.ts
 
 # WebStorm
 .idea/
-
-package-lock.json
