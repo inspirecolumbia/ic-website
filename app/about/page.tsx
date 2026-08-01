@@ -39,6 +39,19 @@ export default function AboutPage() {
         <section className="bg-[var(--surface)] py-13 md:py-16">
           <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
             <h2 className="mb-8 mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
+              Mission Statement
+            </h2>
+            <div className="w-full rounded-[10px] bg-[var(--surface-blue)] px-7 py-7 md:px-9 md:py-8">
+              <p className="m-0 [font-family:var(--font-serif)] text-[clamp(1.1rem,1.9vw,1.35rem)] leading-[1.5] font-medium">
+                Inspire Columbia creates stages for the stories, ideas, and talent that make our city extraordinary. We connect our community through powerful ideas and give Columbia&#39;s best a chance to be seen.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-[var(--surface)] pb-13 md:pb-16">
+          <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
+            <h2 className="mb-8 mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
               Our Story
             </h2>
             <div className="grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,1fr)_300px]">
