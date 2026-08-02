@@ -160,7 +160,7 @@ export default function Home() {
               Get Involved
             </h2>
             <p className="mb-8 max-w-[65ch] text-[1.15rem]">
-              We're preparing our next recruitment cycle for associates who want to build valuable leadership skills,
+              We&apos;re preparing our next recruitment cycle for associates who want to build valuable leadership skills,
               support community outreach, and contribute to our mission-driven programming. See our open roles to learn
               more and apply.
             </p>

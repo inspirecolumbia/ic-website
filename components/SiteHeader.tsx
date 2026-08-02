@@ -22,6 +22,12 @@ export default function SiteHeader({ currentPath }: SiteHeaderProps) {
   const liRefs = useRef<(HTMLLIElement | null)[]>([]);
   const [indicator, setIndicator] = useState({ left: 0, width: 0, ready: false });
   const [menuOpen, setMenuOpen] = useState(false);
+  const [prevPath, setPrevPath] = useState(currentPath);
+
+  if (currentPath !== prevPath) {
+    setPrevPath(currentPath);
+    setMenuOpen(false);
+  }
 
   useEffect(() => {
     const activeIndex = navLinks.findIndex((l) => l.href === currentPath);
@@ -29,10 +35,6 @@ export default function SiteHeader({ currentPath }: SiteHeaderProps) {
     if (li) {
       setIndicator({ left: li.offsetLeft, width: li.offsetWidth, ready: true });
     }
-  }, [currentPath]);
-
-  useEffect(() => {
-    setMenuOpen(false);
   }, [currentPath]);
 
   useEffect(() => {
