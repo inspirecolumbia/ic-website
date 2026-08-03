@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
-import type { Job } from "@/components/JobPosting";
-import jobs from "@/data/jobs.json";
+import { createClient } from "@/lib/supabase/public";
+import { jobRowToJob } from "@/lib/jobs";
+
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Open Roles",
@@ -18,8 +20,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default function JobsIndexPage() {
-  const openRoles = jobs as Job[];
+export default async function JobsIndexPage() {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("jobs")
+    .select("*")
+    .eq("status", "published")
+    .order("display_order")
+    .order("published_at", { ascending: false });
+
+  const openRoles = (data ?? []).map(jobRowToJob);
 
   return (
     <>
