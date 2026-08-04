@@ -1,3 +1,7 @@
+"use client";
+
+import { usePathname } from "next/navigation";
+
 const socialLinks = [
   {
     label: "LinkedIn",
@@ -12,7 +16,10 @@ const socialLinks = [
 ];
 
 export default function Footer() {
+  const pathname = usePathname();
   const year = new Date().getFullYear();
+
+  if (pathname.startsWith("/admin")) return null;
 
   return (
     <footer className="border-t border-[var(--line)] bg-[var(--surface)]">
