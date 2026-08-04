@@ -6,6 +6,7 @@ export type JobQuickFact = {
 };
 
 export type Job = {
+  id: string;
   slug: string;
   title: string;
   role: string;
@@ -133,6 +134,10 @@ export default function JobPosting({ job }: { job: Job }) {
           </div>
         </div>
       </section>
+
+      <p className="mx-auto w-full max-w-[1100px] px-6 py-4 text-[0.8rem] text-[var(--ink-muted)] md:px-8">
+        Posting ID: {job.id}
+      </p>
     </main>
   );
 }

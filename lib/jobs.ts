@@ -2,6 +2,16 @@ import type { Job } from "@/components/JobPosting";
 import type { Database } from "./database.types";
 
 type JobRow = Database["public"]["Tables"]["jobs"]["Row"];
+export type DisplayStatus = "draft" | "published" | "scheduled" | "closed" | "archived";
+
+const todayIso = () => new Date().toISOString().slice(0, 10);
+
+export function getDisplayStatus(job: Pick<JobRow, "status" | "posting_date">): DisplayStatus {
+  if (job.status === "published" && job.posting_date && job.posting_date > todayIso()) {
+    return "scheduled";
+  }
+  return job.status;
+}
 
 function formatPostingDate(postingDate: string | null): string {
   if (!postingDate) return "";
@@ -14,6 +24,7 @@ function formatPostingDate(postingDate: string | null): string {
 
 export function jobRowToJob(row: JobRow): Job {
   return {
+    id: row.id,
     slug: row.slug,
     title: row.title,
     role: row.role,
