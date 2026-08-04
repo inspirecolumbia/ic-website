@@ -7,30 +7,10 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -127,12 +107,51 @@ export type Database = {
         }
         Relationships: []
       }
+      security_events: {
+        Row: {
+          actor_clerk_user_id: string
+          actor_role: string
+          created_at: string
+          deleted_count: number
+          deleted_ids: string[]
+          event_type: string
+          filters_snapshot: Json | null
+          id: string
+          scope: string
+        }
+        Insert: {
+          actor_clerk_user_id: string
+          actor_role: string
+          created_at?: string
+          deleted_count: number
+          deleted_ids: string[]
+          event_type: string
+          filters_snapshot?: Json | null
+          id?: string
+          scope: string
+        }
+        Update: {
+          actor_clerk_user_id?: string
+          actor_role?: string
+          created_at?: string
+          deleted_count?: number
+          deleted_ids?: string[]
+          event_type?: string
+          filters_snapshot?: Json | null
+          id?: string
+          scope?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      admin_bulk_delete_history: {
+        Args: { p_filters?: Json; p_ids: string[]; p_scope: string }
+        Returns: number
+      }
     }
     Enums: {
       job_status: "draft" | "published" | "closed" | "archived"
@@ -261,13 +280,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       job_status: ["draft", "published", "closed", "archived"],
     },
   },
 } as const
-
