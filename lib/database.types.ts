@@ -7,13 +7,214 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
+      application_documents: {
+        Row: {
+          application_id: string
+          created_at: string
+          document_type: string
+          file_name: string
+          id: string
+          storage_path: string | null
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          document_type: string
+          file_name: string
+          id?: string
+          storage_path?: string | null
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          document_type?: string
+          file_name?: string
+          id?: string
+          storage_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_documents_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      application_screening_answers: {
+        Row: {
+          answer: string
+          application_id: string
+          created_at: string
+          id: string
+          question: string
+        }
+        Insert: {
+          answer: string
+          application_id: string
+          created_at?: string
+          id?: string
+          question: string
+        }
+        Update: {
+          answer?: string
+          application_id?: string
+          created_at?: string
+          id?: string
+          question?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_screening_answers_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      application_status_history: {
+        Row: {
+          application_id: string
+          changed_by_clerk_user_id: string
+          changed_by_role: string | null
+          created_at: string
+          id: string
+          new_status: Database["public"]["Enums"]["application_status"]
+          old_status: Database["public"]["Enums"]["application_status"] | null
+        }
+        Insert: {
+          application_id: string
+          changed_by_clerk_user_id: string
+          changed_by_role?: string | null
+          created_at?: string
+          id?: string
+          new_status: Database["public"]["Enums"]["application_status"]
+          old_status?: Database["public"]["Enums"]["application_status"] | null
+        }
+        Update: {
+          application_id?: string
+          changed_by_clerk_user_id?: string
+          changed_by_role?: string | null
+          created_at?: string
+          id?: string
+          new_status?: Database["public"]["Enums"]["application_status"]
+          old_status?: Database["public"]["Enums"]["application_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_status_history_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      application_team_preferences: {
+        Row: {
+          application_id: string
+          id: string
+          preference_rank: number
+          team_name: string
+        }
+        Insert: {
+          application_id: string
+          id?: string
+          preference_rank: number
+          team_name: string
+        }
+        Update: {
+          application_id?: string
+          id?: string
+          preference_rank?: number
+          team_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_team_preferences_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      applications: {
+        Row: {
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          job_id: string
+          last_name: string
+          phone: string | null
+          reviewer_notes: string | null
+          status: Database["public"]["Enums"]["application_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          first_name: string
+          id?: string
+          job_id: string
+          last_name: string
+          phone?: string | null
+          reviewer_notes?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          job_id?: string
+          last_name?: string
+          phone?: string | null
+          reviewer_notes?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -154,6 +355,14 @@ export type Database = {
       }
     }
     Enums: {
+      application_status:
+        | "submitted"
+        | "under_review"
+        | "interviewing"
+        | "offer"
+        | "hired"
+        | "rejected"
+        | "withdrawn"
       job_status: "draft" | "published" | "closed" | "archived"
     }
     CompositeTypes: {
@@ -280,9 +489,22 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
+      application_status: [
+        "submitted",
+        "under_review",
+        "interviewing",
+        "offer",
+        "hired",
+        "rejected",
+        "withdrawn",
+      ],
       job_status: ["draft", "published", "closed", "archived"],
     },
   },
 } as const
+
