@@ -74,7 +74,7 @@ export default function Home() {
             </p>
             <div className="mt-6 border-t border-[var(--line)] pt-6">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div className="rounded-[10px] border border-[var(--line)] bg-[var(--card)] p-6 flex flex-col gap-4 transition-all duration-150 hover:border-[var(--brand)] hover:shadow-[0_8px_24px_rgba(29,78,216,0.12)]">
+                <div className="rounded-[10px] border border-[var(--line)] bg-[var(--card-public)] p-6 flex flex-col gap-4 transition-all duration-150 hover:border-[var(--brand)] hover:shadow-[0_8px_24px_rgba(29,78,216,0.12)]">
                   <Image
                     src="/tedxcv.png"
                     alt="TEDxCongaree Vista logo"
@@ -88,7 +88,7 @@ export default function Home() {
                     first standard TEDx event in Columbia for over 10 years.
                   </p>
                   <a
-                    className="inline-block self-start rounded-full border-2 border-[var(--brand)] bg-[var(--card)] px-6 py-3 font-bold text-[var(--brand)] no-underline transition-colors duration-150 hover:bg-[var(--brand)] hover:text-white"
+                    className="inline-block self-start rounded-full border-2 border-[var(--brand)] bg-[var(--card-public)] px-6 py-3 font-bold text-[var(--brand)] no-underline transition-colors duration-150 hover:bg-[var(--brand)] hover:text-white"
                     href="https://tedxcongareevista.com"
                     target="_blank"
                     rel="noopener noreferrer"
@@ -97,7 +97,7 @@ export default function Home() {
                   </a>
                 </div>
                   {/*
-                <div className="rounded-[10px] border border-[var(--line)] bg-[var(--card)] p-6 flex flex-col gap-4 transition-all duration-150 hover:border-[var(--brand)] hover:shadow-[0_8px_24px_rgba(29,78,216,0.12)]">
+                <div className="rounded-[10px] border border-[var(--line)] bg-[var(--card-public)] p-6 flex flex-col gap-4 transition-all duration-150 hover:border-[var(--brand)] hover:shadow-[0_8px_24px_rgba(29,78,216,0.12)]">
                   <Image
                     src="/screwupnights-placeholder.svg"
                     alt="SCrewUp Nights logo placeholder"
@@ -111,7 +111,7 @@ export default function Home() {
                     the moments that didn&apos;t go as planned.
                   </p>
                   <a
-                    className="inline-block self-start rounded-full border-2 border-[var(--brand)] bg-[var(--card)] px-6 py-3 font-bold text-[var(--brand)] no-underline transition-colors duration-150 hover:bg-[var(--brand)] hover:text-white"
+                    className="inline-block self-start rounded-full border-2 border-[var(--brand)] bg-[var(--card-public)] px-6 py-3 font-bold text-[var(--brand)] no-underline transition-colors duration-150 hover:bg-[var(--brand)] hover:text-white"
                     href="https://screwupnights.com"
                     target="_blank"
                     rel="noopener noreferrer"
