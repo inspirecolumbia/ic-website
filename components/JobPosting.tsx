@@ -74,7 +74,7 @@ export default function JobPosting({ job }: { job: Job }) {
             {job.quickFacts.map((fact) => (
               <span
                 key={fact.label}
-                className="border border-[var(--line)] bg-[var(--card)] px-3 py-1.5 text-[0.85rem] font-medium text-[var(--ink-muted)]"
+                className="border border-[var(--line)] bg-[var(--card-public)] px-3 py-1.5 text-[0.85rem] font-medium text-[var(--ink-muted)]"
               >
                 {fact.label}: {fact.value}
               </span>
@@ -120,7 +120,7 @@ export default function JobPosting({ job }: { job: Job }) {
 
       <section className="bg-[var(--surface-blue)] py-13 md:py-16">
         <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
-          <div className="border border-[var(--line)] bg-[var(--card)] p-6">
+          <div className="border border-[var(--line)] bg-[var(--card-public)] p-6">
             <p className="m-0 text-[1.15rem] font-bold">Not the right fit?</p>
             <p className="mb-4 mt-1 text-[0.95rem] text-[var(--ink-muted)]">
               See every open role at Inspire Columbia.

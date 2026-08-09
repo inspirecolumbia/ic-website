@@ -7,7 +7,7 @@ type PersonCardProps = {
 
 export default function PersonCard({ person }: PersonCardProps) {
   return (
-    <div className="flex w-full flex-col gap-4 rounded-[10px] border border-[var(--line)] bg-[var(--card)] p-6 transition-all duration-150 hover:border-[var(--brand)] hover:shadow-[0_8px_24px_rgba(29,78,216,0.12)]">
+    <div className="flex w-full flex-col gap-4 rounded-[10px] border border-[var(--line)] bg-[var(--card-public)] p-6 transition-all duration-150 hover:border-[var(--brand)] hover:shadow-[0_8px_24px_rgba(29,78,216,0.12)]">
       <div className="flex flex-col items-center gap-4 text-center">
         {person.headshot ? (
           <Image

@@ -1,5 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import AccountMenu from "@/components/admin/AccountMenu";
+import AdminThemeClass from "@/components/admin/AdminThemeClass";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   await auth.protect();
@@ -14,9 +15,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const name = user?.fullName || user?.primaryEmailAddress?.emailAddress || "Signed in";
 
   return (
-    <div className="min-h-screen bg-[var(--admin-background)]">
-      <nav className="flex items-center justify-between border-b border-[var(--line)] bg-[rgba(250,247,240,0.85)] px-6 py-4 backdrop-blur-lg">
-        <span className="text-lg font-semibold text-[var(--ink)]">Inspire Columbia Admin</span>
+    <div className="min-h-screen bg-background">
+      <AdminThemeClass />
+      <nav className="flex items-center justify-between border-b border-border bg-background/85 px-6 py-4 backdrop-blur-lg">
+        <span className="text-lg font-semibold text-foreground">Inspire Columbia Admin</span>
         <AccountMenu name={name} role={role} />
       </nav>
       <main className="mx-auto max-w-5xl p-6">{children}</main>
