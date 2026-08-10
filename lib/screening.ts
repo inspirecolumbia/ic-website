@@ -40,6 +40,34 @@ export const SCREENING_QUESTIONS = {
 
 export type ScreeningQuestionKey = keyof typeof SCREENING_QUESTIONS;
 
+// The fixed list of Columbia-area schools shown as radio options on the
+// application form, plus an "Other" free-text fallback (handled in
+// components/JobApplicationForm.tsx, not listed here).
+export const SCHOOLS = [
+  "Allen University",
+  "Benedict College",
+  "Columbia College",
+  "Columbia International University",
+  "Midlands Technical College",
+  "University of South Carolina, Columbia",
+];
+
+// Verified student-email domains for each school above (2026-08-10). Used
+// to reject a school-email/school mismatch (e.g. picking USC but entering a
+// gmail.com address) -- skipped entirely for a free-typed "Other" school,
+// since there's no known domain to check against. Keep in sync with the
+// submit_application RPC's v_school_email_domains.
+export const SCHOOL_EMAIL_DOMAINS: Record<string, string[]> = {
+  "Allen University": ["allenuniversity.edu"],
+  "Benedict College": ["benedict.edu"],
+  "Columbia College": ["columbiasc.edu"],
+  "Columbia International University": ["ciu.edu"],
+  "Midlands Technical College": ["midlandstech.edu"],
+  "University of South Carolina, Columbia": ["email.sc.edu", "sc.edu"],
+};
+
+export const YEAR_OF_STUDY_OPTIONS = ["Freshman", "Sophomore", "Junior", "Senior", "Alumni"];
+
 // Pure function backing the 3 team-ranking dropdowns' live exclusion of
 // already-picked teams (each dropdown's option list narrows as prior ones
 // are chosen) -- kept standalone so it's unit-testable without React.

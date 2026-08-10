@@ -17,18 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { submitApplication } from "@/app/jobs/actions";
-import { SCREENING_QUESTIONS, availableTeams } from "@/lib/screening";
-
-const SCHOOLS = [
-  "Allen University",
-  "Benedict College",
-  "Columbia College",
-  "Columbia International University",
-  "Midlands Technical College",
-  "University of South Carolina, Columbia",
-];
-
-const YEAR_OF_STUDY_OPTIONS = ["Freshman", "Sophomore", "Junior", "Senior", "Alumni"];
+import { SCHOOLS, SCREENING_QUESTIONS, YEAR_OF_STUDY_OPTIONS, availableTeams } from "@/lib/screening";
 
 // Shared by every RadioGroupItem on this page -- pulled out once these
 // fields (school, year of study) needed the same styling as the eligibility
@@ -242,12 +231,21 @@ export default function JobApplicationForm({
                     required
                     className={fieldClassName}
                   />
+                  <p className="mt-1 text-xs text-[var(--ink-muted)]">
+                    Must be your official school-issued email address.
+                  </p>
                 </div>
               </div>
 
               <div>
                 <Label htmlFor="phone">Phone number (optional)</Label>
-                <Input id="phone" name="phone" type="tel" className={fieldClassName} />
+                <Input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  placeholder="(803) 555-0100"
+                  className={fieldClassName}
+                />
               </div>
             </FormSection>
 

@@ -18,7 +18,7 @@ const baseInput = {
   firstName: "Ada",
   lastName: "Lovelace",
   email: "ada@example.com",
-  schoolEmail: "ada@school.edu",
+  schoolEmail: "ada@email.sc.edu",
   school: "University of South Carolina, Columbia",
   major: "Computer Science",
   yearOfStudy: "Junior",
@@ -200,6 +200,40 @@ describe("buildApplicationInsertPayload", () => {
   it("accepts a well-formed phone number", () => {
     const payload = buildApplicationInsertPayload({ ...baseInput, phone: "+1 (555) 010-0100" });
     expect(payload.p_phone).toBe("+1 (555) 010-0100");
+  });
+
+  it("accepts a plain 10-digit phone number with no formatting", () => {
+    const payload = buildApplicationInsertPayload({ ...baseInput, phone: "8035550100" });
+    expect(payload.p_phone).toBe("8035550100");
+  });
+
+  it("throws ApplicationValidationError on a phone number that's only separator characters", () => {
+    // Regression: the old pattern only checked allowed characters and
+    // length, so a string of nothing but dashes passed as "valid".
+    expect(() => buildApplicationInsertPayload({ ...baseInput, phone: "-------" })).toThrow(
+      ApplicationValidationError
+    );
+  });
+
+  it("throws ApplicationValidationError on a phone number with too few digits", () => {
+    expect(() => buildApplicationInsertPayload({ ...baseInput, phone: "555-0100" })).toThrow(
+      ApplicationValidationError
+    );
+  });
+
+  it("throws ApplicationValidationError when the school email domain doesn't match the selected school", () => {
+    expect(() =>
+      buildApplicationInsertPayload({ ...baseInput, schoolEmail: "ada@gmail.com" })
+    ).toThrow(ApplicationValidationError);
+  });
+
+  it("accepts any valid email for a school not in the known domain list", () => {
+    const payload = buildApplicationInsertPayload({
+      ...baseInput,
+      school: "Trident Technical College",
+      schoolEmail: "ada@gmail.com",
+    });
+    expect(payload.p_school_email).toBe("ada@gmail.com");
   });
 });
 

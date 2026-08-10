@@ -1,4 +1,5 @@
 import type { Database } from "./database.types";
+import { SCHOOL_EMAIL_DOMAINS } from "./screening";
 
 type ApplicationRow = Database["public"]["Tables"]["applications"]["Row"];
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
@@ -58,7 +59,12 @@ export class ApplicationValidationError extends Error {}
 // Exported so tests/unit/business-rule-sync.test.ts can assert these stay in
 // sync with the hand-copied regexes in the submit_application RPC.
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-export const PHONE_PATTERN = /^[0-9+()\-.\s]{7,20}$/;
+// Requires an actual 10-digit US number (11 with a leading 1), not just an
+// allowed character set -- the previous version (`/^[0-9+()\-.\s]{7,20}$/`)
+// had no digit-count requirement at all, so a string of nothing but dashes
+// or dots passed as a "valid" phone number. Still accepts common formats:
+// plain digits, dashes, dots, spaces, and parens around the area code.
+export const PHONE_PATTERN = /^(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/;
 
 // The application id has to exist before file upload starts (the storage
 // path is derived from it), so it's generated up front by the caller, not
@@ -142,6 +148,19 @@ export function buildApplicationInsertPayload(input: ApplicationSubmissionInput)
   if (!school) throw new ApplicationValidationError("School is required.");
   if (!major) throw new ApplicationValidationError("Major is required.");
   if (!yearOfStudy) throw new ApplicationValidationError("Year of study is required.");
+
+  // Only checked for one of the fixed schools -- a free-typed "Other" school
+  // has no known domain to validate against, so it just needs a valid email
+  // shape (already checked above).
+  const allowedSchoolEmailDomains = SCHOOL_EMAIL_DOMAINS[school];
+  if (allowedSchoolEmailDomains) {
+    const schoolEmailDomain = schoolEmail.split("@")[1] ?? "";
+    if (!allowedSchoolEmailDomains.includes(schoolEmailDomain)) {
+      throw new ApplicationValidationError(
+        `School email must be a ${school} address (e.g. name@${allowedSchoolEmailDomains[0]}).`
+      );
+    }
+  }
 
   const resume = input.documents.find((doc) => doc.documentType === "resume");
   const transcript = input.documents.find((doc) => doc.documentType === "transcript");
