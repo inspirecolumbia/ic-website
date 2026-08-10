@@ -33,41 +33,62 @@ async function seedApplication(client: Client, jobId: string, overrides: { email
   return rows[0].id as string;
 }
 
+// anon has no direct INSERT grant on applications (or its child tables) --
+// submission only happens through this SECURITY DEFINER RPC (see
+// supabase/migrations/20260809120400_submit_application_rpc.sql). Dummy
+// storage paths are fine here since this exercises the DB layer directly,
+// no real Storage upload involved.
+async function submitViaRpc(client: Client, jobId: string, overrides: { email?: string } = {}) {
+  return client.query(
+    `select public.submit_application(
+       gen_random_uuid(), $1::uuid, 'Ada', 'Lovelace', $2, null,
+       'ada@school.edu', 'Test University', 'Computer Science', 'Junior', null,
+       '[{"documentType":"resume","fileName":"r.pdf","storagePath":"applications/x/resume.pdf"},
+         {"documentType":"transcript","fileName":"t.pdf","storagePath":"applications/x/transcript.pdf"}]'::jsonb,
+       '[{"teamName":"Production and Operations","rank":1}]'::jsonb,
+       '[]'::jsonb
+     )`,
+    [jobId, overrides.email ?? `ada-${Math.random().toString(36).slice(2)}@example.com`]
+  );
+}
+
 describe("applications RLS", () => {
-  it("anon can insert an application for a published job", async () => {
+  it("anon can submit an application for a published job via submit_application", async () => {
     await withTransaction(async (client) => {
       const jobId = await seedJob(client, "published");
       await impersonate(client, asAnon());
-      await expect(
-        client.query(
-          `insert into public.applications (job_id, first_name, last_name, email) values ($1, 'Ada', 'Lovelace', 'ada@example.com')`,
-          [jobId]
-        )
-      ).resolves.toBeDefined();
+      await expect(submitViaRpc(client, jobId, { email: "ada@example.com" })).resolves.toBeDefined();
     });
   });
 
-  it("anon cannot insert an application for a draft job", async () => {
+  it("anon cannot submit an application for a draft job", async () => {
     await withTransaction(async (client) => {
       const jobId = await seedJob(client, "draft");
       await impersonate(client, asAnon());
+      await expect(submitViaRpc(client, jobId, { email: "ada@example.com" })).rejects.toThrow(
+        /not open for applications/i
+      );
+    });
+  });
+
+  it("anon cannot insert directly into applications, bypassing the RPC", async () => {
+    await withTransaction(async (client) => {
+      const jobId = await seedJob(client, "published");
+      await impersonate(client, asAnon());
       await expect(
         client.query(
           `insert into public.applications (job_id, first_name, last_name, email) values ($1, 'Ada', 'Lovelace', 'ada@example.com')`,
           [jobId]
         )
-      ).rejects.toThrow(/row-level security|permission denied/i);
+      ).rejects.toThrow(/permission denied/i);
     });
   });
 
-  it("anon cannot select applications back, even the one it just inserted", async () => {
+  it("anon cannot select applications back, even the one it just submitted", async () => {
     await withTransaction(async (client) => {
       const jobId = await seedJob(client, "published");
       await impersonate(client, asAnon());
-      await client.query(
-        `insert into public.applications (job_id, first_name, last_name, email) values ($1, 'Ada', 'Lovelace', 'ada@example.com')`,
-        [jobId]
-      );
+      await submitViaRpc(client, jobId, { email: "ada@example.com" });
       await expect(client.query("select * from public.applications")).rejects.toThrow(/permission denied/i);
     });
   });

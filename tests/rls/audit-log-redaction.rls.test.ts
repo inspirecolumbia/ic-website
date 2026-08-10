@@ -20,20 +20,32 @@ async function seedJob(client: PoolClient) {
   return rows[0].id as string;
 }
 
+// anon has no direct INSERT grant on applications -- submission only
+// happens through this SECURITY DEFINER RPC (see
+// supabase/migrations/20260809120400_submit_application_rpc.sql). Dummy
+// storage paths are fine here since this exercises the DB layer directly.
+async function submitViaRpc(client: PoolClient, jobId: string) {
+  const appId = randomUUID();
+  await client.query(
+    `select public.submit_application(
+       $1::uuid, $2::uuid, 'Ada', 'Lovelace', 'ada@example.com', null,
+       'ada@school.edu', 'Test University', 'Computer Science', 'Junior', null,
+       '[{"documentType":"resume","fileName":"r.pdf","storagePath":"applications/x/resume.pdf"},
+         {"documentType":"transcript","fileName":"t.pdf","storagePath":"applications/x/transcript.pdf"}]'::jsonb,
+       '[{"teamName":"Production and Operations","rank":1}]'::jsonb,
+       '[]'::jsonb
+     )`,
+    [appId, jobId]
+  );
+  return appId;
+}
+
 describe("application audit_log redaction", () => {
   it("anon insert produces an audit_log row with no PII keys in new_data", async () => {
     await withTransaction(async (client) => {
       const jobId = await seedJob(client);
-      // Anon has no SELECT grant on applications, so it can't use RETURNING
-      // to read back a generated id -- same reason the real form branch
-      // generates the id client-side (see lib/applications.ts).
-      const appId = randomUUID();
       await impersonate(client, asAnon());
-      await client.query(
-        `insert into public.applications (id, job_id, first_name, last_name, email)
-         values ($1, $2, 'Ada', 'Lovelace', 'ada@example.com')`,
-        [appId, jobId]
-      );
+      const appId = await submitViaRpc(client, jobId);
 
       await impersonate(client, asAdmin());
       const { rows } = await client.query(
@@ -80,11 +92,7 @@ describe("application audit_log redaction", () => {
     await withTransaction(async (client) => {
       const jobId = await seedJob(client);
       await impersonate(client, asAnon());
-      await client.query(
-        `insert into public.applications (job_id, first_name, last_name, email)
-         values ($1, 'Ada', 'Lovelace', 'ada@example.com')`,
-        [jobId]
-      );
+      await submitViaRpc(client, jobId);
 
       await impersonate(client, asStaff());
       const { rows } = await client.query("select * from public.audit_log where table_name = 'applications'");

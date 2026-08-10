@@ -52,21 +52,17 @@ const childTables = [
 ];
 
 describe.each(childTables)("$name RLS", ({ name, insertSql, updateColumn, updateValue }) => {
-  it("anon can insert referencing an application_id created in the same transaction", async () => {
+  // anon has no direct INSERT grant on any application child table -- the
+  // only anon write path is the submit_application RPC (see
+  // supabase/migrations/20260809120400_submit_application_rpc.sql), which is
+  // exercised separately below via the "anon writes via submit_application"
+  // block instead of a raw insert per table.
+  it("anon cannot insert directly, even referencing a valid application_id", async () => {
     await withTransaction(async (client) => {
       const jobId = await seedJob(client);
       const appId = await seedApplication(client, jobId);
       await impersonate(client, asAnon());
-      await expect(client.query(insertSql(appId))).resolves.toBeDefined();
-    });
-  });
-
-  it("anon insert fails on a nonexistent application_id (FK violation)", async () => {
-    await withTransaction(async (client) => {
-      await impersonate(client, asAnon());
-      await expect(
-        client.query(insertSql("00000000-0000-0000-0000-000000000000"))
-      ).rejects.toThrow(/foreign key/i);
+      await expect(client.query(insertSql(appId))).rejects.toThrow(/permission denied/i);
     });
   });
 
@@ -125,6 +121,34 @@ describe.each(childTables)("$name RLS", ({ name, insertSql, updateColumn, update
       await expect(client.query(`delete from public.${name} where id = $1`, [childId])).rejects.toThrow(
         /permission denied/i
       );
+    });
+  });
+});
+
+describe("anon writes via submit_application", () => {
+  it("populates every child table when called by anon", async () => {
+    await withTransaction(async (client) => {
+      const jobId = await seedJob(client);
+      await impersonate(client, asAnon());
+      const {
+        rows: [{ submit_application: appId }],
+      } = await client.query(
+        `select public.submit_application(
+           gen_random_uuid(), $1::uuid, 'Ada', 'Lovelace', $2, null,
+           'ada@school.edu', 'Test University', 'Computer Science', 'Junior', null,
+           '[{"documentType":"resume","fileName":"r.pdf","storagePath":"applications/x/resume.pdf"},
+             {"documentType":"transcript","fileName":"t.pdf","storagePath":"applications/x/transcript.pdf"}]'::jsonb,
+           '[{"teamName":"Production and Operations","rank":1}]'::jsonb,
+           '[]'::jsonb
+         ) as submit_application`,
+        [jobId, `ada-${Math.random().toString(36).slice(2)}@example.com`]
+      );
+
+      await impersonate(client, asAdmin());
+      for (const { name } of childTables) {
+        const { rows } = await client.query(`select * from public.${name} where application_id = $1`, [appId]);
+        expect(rows.length).toBeGreaterThan(0);
+      }
     });
   });
 });
