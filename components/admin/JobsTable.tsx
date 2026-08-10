@@ -81,6 +81,7 @@ const statusFilters: { value: DisplayStatus | "all"; label: string }[] = [
   { value: "draft", label: "Draft" },
   { value: "published", label: "Published" },
   { value: "scheduled", label: "Scheduled" },
+  { value: "expired", label: "Expired" },
   { value: "closed", label: "Closed" },
   { value: "archived", label: "Archived" },
 ];
@@ -89,6 +90,7 @@ const statusBadgeClass: Record<DisplayStatus, string> = {
   draft: "bg-[var(--admin-neutral-soft)] text-[var(--admin-text-muted)]",
   published: "bg-[var(--admin-success-soft)] text-[var(--admin-success)]",
   scheduled: "bg-[var(--admin-brand-soft)] text-[var(--admin-brand)]",
+  expired: "bg-[var(--admin-warning-soft)] text-[var(--admin-warning)]",
   closed: "bg-[var(--admin-warning-soft)] text-[var(--admin-warning)]",
   archived: "bg-[var(--admin-warning-soft)] text-[var(--admin-warning)]",
 };
@@ -97,6 +99,7 @@ const statusLabel: Record<DisplayStatus, string> = {
   draft: "Draft",
   published: "Published",
   scheduled: "Scheduled",
+  expired: "Expired",
   closed: "Closed",
   archived: "Archived",
 };
@@ -107,6 +110,7 @@ function rowActions(displayStatus: DisplayStatus): { label: string; value: JobSt
       return [{ label: "Publish", value: "published" }];
     case "published":
     case "scheduled":
+    case "expired":
       return [{ label: "Unpublish", value: "closed" }];
     case "closed":
       return [
@@ -174,6 +178,7 @@ function SortableRow({
   onMove,
   onMoveToEdge,
   onEdit,
+  onActionError,
   registerRowTrigger,
   isFirst,
   isLast,
@@ -188,6 +193,7 @@ function SortableRow({
   onMove: (id: string, direction: "up" | "down") => void;
   onMoveToEdge: (id: string, edge: "top" | "bottom") => void;
   onEdit: (job: JobRow) => void;
+  onActionError: (message: string | null) => void;
   registerRowTrigger?: (id: string, el: HTMLButtonElement | null) => void;
   isFirst: boolean;
   isLast: boolean;
@@ -202,9 +208,10 @@ function SortableRow({
   // double-click on Duplicate can't fire two overlapping inserts (the second
   // would silently lose the unique-slug race and drop with no feedback).
   const [actionPending, startActionTransition] = useTransition();
-  function runRowAction(fn: () => Promise<void>) {
+  function runRowAction(fn: () => Promise<{ error: string } | null | void>) {
     startActionTransition(async () => {
-      await fn();
+      const result = await fn();
+      onActionError(result && "error" in result && result.error ? result.error : null);
     });
   }
 
@@ -277,6 +284,14 @@ function SortableRow({
           {statusLabel[displayStatus]}
         </span>
       </TableCell>
+      <TableCell className="text-[var(--admin-text-muted)]">
+        {job.closing_date
+          ? new Date(job.closing_date).toLocaleString(undefined, {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })
+          : "—"}
+      </TableCell>
       <TableCell>{new Date(job.updated_at).toLocaleDateString()}</TableCell>
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-1">
@@ -302,11 +317,12 @@ function SortableRow({
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <form action={deleteJob.bind(null, job.id)}>
-                  <AlertDialogAction type="submit" variant="destructive">
-                    Delete
-                  </AlertDialogAction>
-                </form>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={() => runRowAction(() => deleteJob(job.id))}
+                >
+                  Delete
+                </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -391,6 +407,7 @@ export default function JobsTable({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [reorderError, setReorderError] = useState<string | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
+  const [rowActionError, setRowActionError] = useState<string | null>(null);
   const [bulkDeletePending, startBulkDeleteTransition] = useTransition();
   const [, startTransition] = useTransition();
 
@@ -605,6 +622,11 @@ export default function JobsTable({
           {bulkError}
         </p>
       )}
+      {rowActionError && (
+        <p className="mb-3 rounded-md bg-[var(--admin-danger-soft)] px-3 py-2 text-sm text-[var(--admin-danger)]">
+          {rowActionError}
+        </p>
+      )}
 
       <div className="max-h-[min(65vh,720px)] overflow-y-auto overflow-x-auto rounded-lg border border-[var(--admin-border)]">
         <DndContext
@@ -629,6 +651,7 @@ export default function JobsTable({
                 <TableHead>Order</TableHead>
                 <SortableHead column="title" label="Title" sort={sort} onSort={handleSort} />
                 <SortableHead column="status" label="Status" sort={sort} onSort={handleSort} />
+                <TableHead>Closing</TableHead>
                 <SortableHead column="updated" label="Updated" sort={sort} onSort={handleSort} />
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -651,6 +674,7 @@ export default function JobsTable({
                     onMove={handleMove}
                     onMoveToEdge={handleMoveToEdge}
                     onEdit={onEdit}
+                    onActionError={setRowActionError}
                     registerRowTrigger={registerRowTrigger}
                     isFirst={index === 0}
                     isLast={index === filteredJobs.length - 1}

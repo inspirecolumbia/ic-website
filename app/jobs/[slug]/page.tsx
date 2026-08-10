@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import JobPosting from "@/components/JobPosting";
 import { createClient } from "@/lib/supabase/public";
-import { jobRowToJob } from "@/lib/jobs";
+import { jobRowToJob, stripMarkdown } from "@/lib/jobs";
 
 export const revalidate = 60;
 
@@ -36,17 +36,18 @@ export async function generateMetadata({
   if (!row) return {};
 
   const job = jobRowToJob(row);
+  const description = stripMarkdown(job.description);
   return {
     title: job.title,
-    description: job.description,
+    description,
     openGraph: {
       title: `${job.title} | Inspire Columbia`,
-      description: job.description,
+      description,
       url: `https://inspirecolumbia.org/jobs/${job.slug}`,
     },
     twitter: {
       title: `${job.title} | Inspire Columbia`,
-      description: job.description,
+      description,
     },
   };
 }

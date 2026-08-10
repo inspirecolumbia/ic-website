@@ -9,12 +9,15 @@ export default async function AdminJobsPage() {
   const canWrite = role === "staff" || role === "admin";
 
   const supabase = createClerkSupabaseClient();
-  const { data: jobs } = await supabase.from("jobs").select("*").order("display_order");
+  const [{ data: jobs }, { data: templates }] = await Promise.all([
+    supabase.from("jobs").select("*").order("display_order"),
+    supabase.from("application_templates").select("*").order("name"),
+  ]);
 
   return (
     <div>
       <AdminTabs />
-      <JobsManager initialJobs={jobs ?? []} canWrite={canWrite} />
+      <JobsManager initialJobs={jobs ?? []} templates={templates ?? []} canWrite={canWrite} />
     </div>
   );
 }

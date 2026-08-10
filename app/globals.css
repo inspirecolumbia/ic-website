@@ -38,24 +38,30 @@
   --admin-danger: #c93636;
   --admin-danger-soft: #fcebec;
   --admin-neutral-soft: #eef0f3;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  /* Base shadcn tokens, mapped onto the site's own public-facing palette
+     rather than left as shadcn's default gray -- this is the base :root,
+     not .admin-theme, so it's what any shadcn component renders with on a
+     public page (first real usage: the application form). .admin-theme's
+     own overrides (below) still win inside /admin since class-scoped rules
+     beat these. */
+  --background: var(--card-public);
+  --foreground: var(--ink);
+  --card: var(--card-public);
+  --card-foreground: var(--ink);
+  --popover: var(--card-public);
+  --popover-foreground: var(--ink);
+  --primary: var(--brand);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --secondary: var(--surface);
+  --secondary-foreground: var(--ink);
+  --muted: var(--surface);
+  --muted-foreground: var(--ink-muted);
+  --accent: var(--surface-blue);
+  --accent-foreground: var(--ink);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--brand);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);

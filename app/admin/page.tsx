@@ -8,7 +8,7 @@ export default async function AdminDashboardPage() {
   const supabase = createClerkSupabaseClient();
 
   const [{ data: jobs }, { data: recentChanges }] = await Promise.all([
-    supabase.from("jobs").select("id, status, posting_date"),
+    supabase.from("jobs").select("id, status, posting_date, closing_date"),
     supabase
       .from("audit_log")
       .select("*")
@@ -19,7 +19,7 @@ export default async function AdminDashboardPage() {
   const counts = { draft: 0, published: 0, scheduled: 0, closedOrArchived: 0 };
   for (const job of jobs ?? []) {
     const status = getDisplayStatus(job);
-    if (status === "closed" || status === "archived") counts.closedOrArchived++;
+    if (status === "closed" || status === "archived" || status === "expired") counts.closedOrArchived++;
     else counts[status]++;
   }
 

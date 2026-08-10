@@ -1,4 +1,6 @@
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
+import type { Components } from "react-markdown";
 
 export type JobQuickFact = {
   label: string;
@@ -15,22 +17,63 @@ export type Job = {
   postingDate: string;
   quickFacts: JobQuickFact[];
   description: string;
-  responsibilities: string[];
-  qualifications: string[];
-  applyUrl: string;
+  applyUrl: string | null;
+  postedDate: string;
+  lastPublished: string;
 };
 
-function ApplyButton({ jobTitle, href }: { jobTitle: string; href: string }) {
+// This project has no @tailwindcss/typography plugin, so Markdown output
+// needs explicit per-element styling rather than a wrapping "prose" class --
+// these mirror the heading/paragraph/list classes already used elsewhere on
+// this page.
+const markdownComponents: Components = {
+  h1: ({ children }) => (
+    <h2 className="mb-2 mt-8 first:mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
+      {children}
+    </h2>
+  ),
+  h2: ({ children }) => (
+    <h2 className="mb-2 mt-8 first:mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
+      {children}
+    </h2>
+  ),
+  p: ({ children }) => (
+    <p className="mb-4 max-w-[70ch] text-[1.1rem] text-[var(--ink-muted)]">{children}</p>
+  ),
+  ul: ({ children }) => (
+    <ul className="mb-4 max-w-[70ch] list-disc space-y-2 pl-6 text-[1.05rem] text-[var(--ink-muted)]">
+      {children}
+    </ul>
+  ),
+  li: ({ children }) => <li>{children}</li>,
+  strong: ({ children }) => <strong className="font-semibold text-[var(--ink)]">{children}</strong>,
+  em: ({ children }) => <em>{children}</em>,
+};
+
+const applyButtonClassName =
+  "inline-block bg-[var(--brand)] px-6 py-3 text-[1rem] font-semibold text-white no-underline transition-colors duration-200 hover:bg-[var(--brand-hover)]";
+
+// applyUrl set: staff opted for an external form, link out as before. Null:
+// use the built-in application form, same tab, no "(opens in a new tab)".
+function ApplyButton({ jobTitle, jobSlug, applyUrl }: { jobTitle: string; jobSlug: string; applyUrl: string | null }) {
+  if (applyUrl) {
+    return (
+      <a
+        href={applyUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Apply for ${jobTitle} (opens in a new tab)`}
+        className={applyButtonClassName}
+      >
+        Apply now
+      </a>
+    );
+  }
+
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={`Apply for ${jobTitle} (opens in a new tab)`}
-      className="inline-block bg-[var(--brand)] px-6 py-3 text-[1rem] font-semibold text-white no-underline transition-colors duration-200 hover:bg-[var(--brand-hover)]"
-    >
+    <Link href={`/jobs/${jobSlug}/apply`} className={applyButtonClassName}>
       Apply now
-    </a>
+    </Link>
   );
 }
 
@@ -81,7 +124,7 @@ export default function JobPosting({ job }: { job: Job }) {
             ))}
           </div>
 
-          <ApplyButton jobTitle={job.title} href={job.applyUrl} />
+          <ApplyButton jobTitle={job.title} jobSlug={job.slug} applyUrl={job.applyUrl} />
         </div>
       </section>
 
@@ -90,30 +133,12 @@ export default function JobPosting({ job }: { job: Job }) {
           <h2 className="mb-2 mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
             About the role
           </h2>
-          <p className="mb-10 max-w-[70ch] text-[1.1rem] text-[var(--ink-muted)]">
-            {job.description}
-          </p>
-
-          <h2 className="mb-2 mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
-            Responsibilities
-          </h2>
-          <ul className="mb-10 max-w-[70ch] list-disc space-y-2 pl-6 text-[1.05rem] text-[var(--ink-muted)]">
-            {job.responsibilities.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-
-          <h2 className="mb-2 mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
-            Qualifications
-          </h2>
-          <ul className="mb-10 max-w-[70ch] list-disc space-y-2 pl-6 text-[1.05rem] text-[var(--ink-muted)]">
-            {job.qualifications.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
+          <div className="mb-6">
+            <ReactMarkdown components={markdownComponents}>{job.description}</ReactMarkdown>
+          </div>
 
           <div className="flex flex-wrap items-center gap-4 border-t border-[var(--line)] pt-8">
-            <ApplyButton jobTitle={job.title} href={job.applyUrl} />
+            <ApplyButton jobTitle={job.title} jobSlug={job.slug} applyUrl={job.applyUrl} />
           </div>
         </div>
       </section>
@@ -136,6 +161,8 @@ export default function JobPosting({ job }: { job: Job }) {
       </section>
 
       <p className="mx-auto w-full max-w-[1100px] px-6 py-4 text-[0.8rem] text-[var(--ink-muted)] md:px-8">
+        {job.postedDate && <>Posted {job.postedDate} · </>}
+        {job.lastPublished && <>Last published {job.lastPublished} · </>}
         Posting ID: {job.id}
       </p>
     </main>
