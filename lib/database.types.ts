@@ -7,30 +7,10 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -173,37 +153,52 @@ export type Database = {
           created_at: string
           email: string
           first_name: string
+          gpa: number | null
           id: string
           job_id: string
           last_name: string
+          major: string | null
           phone: string | null
           reviewer_notes: string | null
+          school: string | null
+          school_email: string | null
           status: Database["public"]["Enums"]["application_status"]
           updated_at: string
+          year_of_study: string | null
         }
         Insert: {
           created_at?: string
           email: string
           first_name: string
+          gpa?: number | null
           id?: string
           job_id: string
           last_name: string
+          major?: string | null
           phone?: string | null
           reviewer_notes?: string | null
+          school?: string | null
+          school_email?: string | null
           status?: Database["public"]["Enums"]["application_status"]
           updated_at?: string
+          year_of_study?: string | null
         }
         Update: {
           created_at?: string
           email?: string
           first_name?: string
+          gpa?: number | null
           id?: string
           job_id?: string
           last_name?: string
+          major?: string | null
           phone?: string | null
           reviewer_notes?: string | null
+          school?: string | null
+          school_email?: string | null
           status?: Database["public"]["Enums"]["application_status"]
           updated_at?: string
+          year_of_study?: string | null
         }
         Relationships: [
           {
@@ -253,7 +248,7 @@ export type Database = {
       }
       jobs: {
         Row: {
-          apply_url: string
+          apply_url: string | null
           commitment_type: string
           created_at: string
           description: string
@@ -271,7 +266,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          apply_url: string
+          apply_url?: string | null
           commitment_type: string
           created_at?: string
           description: string
@@ -289,7 +284,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          apply_url?: string
+          apply_url?: string | null
           commitment_type?: string
           created_at?: string
           description?: string
@@ -352,6 +347,25 @@ export type Database = {
       admin_bulk_delete_history: {
         Args: { p_filters?: Json; p_ids: string[]; p_scope: string }
         Returns: number
+      }
+      submit_application: {
+        Args: {
+          p_application_id: string
+          p_documents: Json
+          p_email: string
+          p_first_name: string
+          p_gpa: number
+          p_job_id: string
+          p_last_name: string
+          p_major: string
+          p_phone: string
+          p_school: string
+          p_school_email: string
+          p_screening_answers: Json
+          p_team_preferences: Json
+          p_year_of_study: string
+        }
+        Returns: string
       }
     }
     Enums: {
@@ -489,9 +503,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       application_status: [
@@ -507,4 +518,3 @@ export const Constants = {
     },
   },
 } as const
-

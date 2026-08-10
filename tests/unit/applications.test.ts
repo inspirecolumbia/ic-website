@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   applicationRowToApplication,
   applicationStatusLabel,
-  ApplicationValidationError,
   buildApplicationInsertPayload,
+  buildDocumentStoragePath,
+  generateApplicationId,
+  ApplicationValidationError,
 } from "@/lib/applications";
 import type { Database } from "@/lib/database.types";
 
@@ -11,10 +13,19 @@ type ApplicationRow = Database["public"]["Tables"]["applications"]["Row"];
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
 
 const baseInput = {
-  jobId: "11111111-1111-1111-1111-111111111111",
+  applicationId: "11111111-1111-1111-1111-111111111111",
+  jobId: "22222222-2222-2222-2222-222222222222",
   firstName: "Ada",
   lastName: "Lovelace",
   email: "ada@example.com",
+  schoolEmail: "ada@school.edu",
+  school: "University of South Carolina, Columbia",
+  major: "Computer Science",
+  yearOfStudy: "Junior",
+  documents: [
+    { documentType: "resume" as const, fileName: "resume.pdf", storagePath: "applications/1/resume-resume.pdf" },
+    { documentType: "transcript" as const, fileName: "transcript.pdf", storagePath: "applications/1/transcript-transcript.pdf" },
+  ],
   teamPreferences: [{ teamName: "Programming", rank: 1 }],
   screeningAnswers: [{ question: "Why join?", answer: "Because." }],
 };
@@ -28,6 +39,11 @@ describe("applicationRowToApplication", () => {
       last_name: "Lovelace",
       email: "ada@example.com",
       phone: "555-0100",
+      school_email: "ada@school.edu",
+      school: "University of South Carolina, Columbia",
+      major: "Computer Science",
+      year_of_study: "Junior",
+      gpa: 3.9,
       status: "under_review",
       reviewer_notes: "Strong candidate",
       created_at: "2026-08-05T00:00:00.000Z",
@@ -41,6 +57,11 @@ describe("applicationRowToApplication", () => {
       lastName: "Lovelace",
       email: "ada@example.com",
       phone: "555-0100",
+      schoolEmail: "ada@school.edu",
+      school: "University of South Carolina, Columbia",
+      major: "Computer Science",
+      yearOfStudy: "Junior",
+      gpa: 3.9,
       status: "under_review",
       reviewerNotes: "Strong candidate",
       createdAt: "2026-08-05T00:00:00.000Z",
@@ -48,19 +69,46 @@ describe("applicationRowToApplication", () => {
   });
 });
 
-describe("buildApplicationInsertPayload", () => {
-  it("stamps the same generated id on the application and every child row", () => {
-    const payload = buildApplicationInsertPayload(baseInput);
-
-    expect(payload.application.id).toMatch(
+describe("generateApplicationId", () => {
+  it("returns a valid UUID", () => {
+    expect(generateApplicationId()).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     );
-    expect(payload.teamPreferences[0]?.application_id).toBe(payload.application.id);
-    expect(payload.screeningAnswers[0]?.application_id).toBe(payload.application.id);
+  });
+});
+
+describe("buildDocumentStoragePath", () => {
+  it("is deterministic for the same (applicationId, documentType)", () => {
+    const a = buildDocumentStoragePath("app-1", "resume");
+    const b = buildDocumentStoragePath("app-1", "resume");
+    expect(a).toBe(b);
+  });
+
+  it("differs by document type for the same application", () => {
+    const resume = buildDocumentStoragePath("app-1", "resume");
+    const transcript = buildDocumentStoragePath("app-1", "transcript");
+    expect(resume).not.toBe(transcript);
+  });
+
+  it("never incorporates a user-supplied filename, only the fixed document type", () => {
+    expect(buildDocumentStoragePath("app-1", "resume")).toBe("applications/app-1/resume.pdf");
+  });
+});
+
+describe("buildApplicationInsertPayload", () => {
+  it("carries the caller-supplied application id through to the RPC args", () => {
+    const payload = buildApplicationInsertPayload(baseInput);
+    expect(payload.p_application_id).toBe(baseInput.applicationId);
   });
 
   it("throws ApplicationValidationError on a malformed email", () => {
     expect(() => buildApplicationInsertPayload({ ...baseInput, email: "not-an-email" })).toThrow(
+      ApplicationValidationError
+    );
+  });
+
+  it("throws ApplicationValidationError on a malformed school email", () => {
+    expect(() => buildApplicationInsertPayload({ ...baseInput, schoolEmail: "not-an-email" })).toThrow(
       ApplicationValidationError
     );
   });
@@ -77,9 +125,81 @@ describe("buildApplicationInsertPayload", () => {
     );
   });
 
+  it("throws ApplicationValidationError when school is missing", () => {
+    expect(() => buildApplicationInsertPayload({ ...baseInput, school: "" })).toThrow(
+      ApplicationValidationError
+    );
+  });
+
+  it("throws ApplicationValidationError when major is missing", () => {
+    expect(() => buildApplicationInsertPayload({ ...baseInput, major: "" })).toThrow(
+      ApplicationValidationError
+    );
+  });
+
+  it("throws ApplicationValidationError when yearOfStudy is missing", () => {
+    expect(() => buildApplicationInsertPayload({ ...baseInput, yearOfStudy: "" })).toThrow(
+      ApplicationValidationError
+    );
+  });
+
+  it("throws ApplicationValidationError when resume is missing", () => {
+    const documents = baseInput.documents.filter((doc) => doc.documentType !== "resume");
+    expect(() => buildApplicationInsertPayload({ ...baseInput, documents })).toThrow(
+      ApplicationValidationError
+    );
+  });
+
+  it("throws ApplicationValidationError when transcript is missing", () => {
+    const documents = baseInput.documents.filter((doc) => doc.documentType !== "transcript");
+    expect(() => buildApplicationInsertPayload({ ...baseInput, documents })).toThrow(
+      ApplicationValidationError
+    );
+  });
+
   it("lowercases a mixed-case email in the resulting payload", () => {
     const payload = buildApplicationInsertPayload({ ...baseInput, email: "Ada.Lovelace@Example.COM" });
-    expect(payload.application.email).toBe("ada.lovelace@example.com");
+    expect(payload.p_email).toBe("ada.lovelace@example.com");
+  });
+
+  it("defaults phone and gpa to null when omitted", () => {
+    const payload = buildApplicationInsertPayload(baseInput);
+    expect(payload.p_phone).toBeNull();
+    expect(payload.p_gpa).toBeNull();
+  });
+
+  it("passes through gpa when provided", () => {
+    const payload = buildApplicationInsertPayload({ ...baseInput, gpa: 3.75 });
+    expect(payload.p_gpa).toBe(3.75);
+  });
+
+  it("throws ApplicationValidationError when gpa is NaN", () => {
+    expect(() => buildApplicationInsertPayload({ ...baseInput, gpa: Number("not-a-number") })).toThrow(
+      ApplicationValidationError
+    );
+  });
+
+  it("throws ApplicationValidationError when gpa is below 0", () => {
+    expect(() => buildApplicationInsertPayload({ ...baseInput, gpa: -0.5 })).toThrow(
+      ApplicationValidationError
+    );
+  });
+
+  it("throws ApplicationValidationError when gpa is above 4", () => {
+    expect(() => buildApplicationInsertPayload({ ...baseInput, gpa: 4.5 })).toThrow(
+      ApplicationValidationError
+    );
+  });
+
+  it("throws ApplicationValidationError on a malformed phone number", () => {
+    expect(() => buildApplicationInsertPayload({ ...baseInput, phone: "not a phone number!!" })).toThrow(
+      ApplicationValidationError
+    );
+  });
+
+  it("accepts a well-formed phone number", () => {
+    const payload = buildApplicationInsertPayload({ ...baseInput, phone: "+1 (555) 010-0100" });
+    expect(payload.p_phone).toBe("+1 (555) 010-0100");
   });
 });
 

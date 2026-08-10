@@ -17,20 +17,33 @@ export type Job = {
   description: string;
   responsibilities: string[];
   qualifications: string[];
-  applyUrl: string;
+  applyUrl: string | null;
 };
 
-function ApplyButton({ jobTitle, href }: { jobTitle: string; href: string }) {
+const applyButtonClassName =
+  "inline-block bg-[var(--brand)] px-6 py-3 text-[1rem] font-semibold text-white no-underline transition-colors duration-200 hover:bg-[var(--brand-hover)]";
+
+// applyUrl set: staff opted for an external form, link out as before. Null:
+// use the built-in application form, same tab, no "(opens in a new tab)".
+function ApplyButton({ jobTitle, jobSlug, applyUrl }: { jobTitle: string; jobSlug: string; applyUrl: string | null }) {
+  if (applyUrl) {
+    return (
+      <a
+        href={applyUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Apply for ${jobTitle} (opens in a new tab)`}
+        className={applyButtonClassName}
+      >
+        Apply now
+      </a>
+    );
+  }
+
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={`Apply for ${jobTitle} (opens in a new tab)`}
-      className="inline-block bg-[var(--brand)] px-6 py-3 text-[1rem] font-semibold text-white no-underline transition-colors duration-200 hover:bg-[var(--brand-hover)]"
-    >
+    <Link href={`/jobs/${jobSlug}/apply`} className={applyButtonClassName}>
       Apply now
-    </a>
+    </Link>
   );
 }
 
@@ -81,7 +94,7 @@ export default function JobPosting({ job }: { job: Job }) {
             ))}
           </div>
 
-          <ApplyButton jobTitle={job.title} href={job.applyUrl} />
+          <ApplyButton jobTitle={job.title} jobSlug={job.slug} applyUrl={job.applyUrl} />
         </div>
       </section>
 
@@ -113,7 +126,7 @@ export default function JobPosting({ job }: { job: Job }) {
           </ul>
 
           <div className="flex flex-wrap items-center gap-4 border-t border-[var(--line)] pt-8">
-            <ApplyButton jobTitle={job.title} href={job.applyUrl} />
+            <ApplyButton jobTitle={job.title} jobSlug={job.slug} applyUrl={job.applyUrl} />
           </div>
         </div>
       </section>

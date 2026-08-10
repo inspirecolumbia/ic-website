@@ -219,18 +219,17 @@ export default function JobForm({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="apply_url">Apply URL</Label>
+          <Label htmlFor="apply_url">Apply URL (optional)</Label>
           <p className="text-sm text-muted-foreground">
-            Where the &quot;Apply now&quot; button sends applicants, usually a Google Form link for
-            now.
+            Leave blank to use Inspire Columbia&apos;s built-in application form. Set this only if
+            applicants should be sent to an external form instead.
           </p>
           <Input
             id="apply_url"
             name="apply_url"
             type="url"
-            required
             placeholder="https://forms.gle/..."
-            defaultValue={job?.apply_url}
+            defaultValue={job?.apply_url ?? ""}
           />
         </div>
 

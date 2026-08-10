@@ -28,7 +28,7 @@ function jobFromFormData(formData: FormData) {
     description: formData.get("description") as string,
     responsibilities: splitLines(formData.get("responsibilities")),
     qualifications: splitLines(formData.get("qualifications")),
-    apply_url: formData.get("apply_url") as string,
+    apply_url: (formData.get("apply_url") as string) || null,
   };
 }
 
