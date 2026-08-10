@@ -55,8 +55,10 @@ export function applicationStatusLabel(status: ApplicationStatus): string {
 
 export class ApplicationValidationError extends Error {}
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_PATTERN = /^[0-9+()\-.\s]{7,20}$/;
+// Exported so tests/unit/business-rule-sync.test.ts can assert these stay in
+// sync with the hand-copied regexes in the submit_application RPC.
+export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const PHONE_PATTERN = /^[0-9+()\-.\s]{7,20}$/;
 
 // The application id has to exist before file upload starts (the storage
 // path is derived from it), so it's generated up front by the caller, not

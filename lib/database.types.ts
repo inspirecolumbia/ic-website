@@ -148,6 +148,24 @@ export type Database = {
           },
         ]
       }
+      application_templates: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       applications: {
         Row: {
           created_at: string
@@ -248,7 +266,9 @@ export type Database = {
       }
       jobs: {
         Row: {
+          application_template_id: string | null
           apply_url: string | null
+          closing_date: string | null
           commitment_type: string
           created_at: string
           description: string
@@ -257,8 +277,6 @@ export type Database = {
           location: string
           posting_date: string | null
           published_at: string | null
-          qualifications: string[]
-          responsibilities: string[]
           role: string
           slug: string
           status: Database["public"]["Enums"]["job_status"]
@@ -266,7 +284,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          application_template_id?: string | null
           apply_url?: string | null
+          closing_date?: string | null
           commitment_type: string
           created_at?: string
           description: string
@@ -275,8 +295,6 @@ export type Database = {
           location: string
           posting_date?: string | null
           published_at?: string | null
-          qualifications?: string[]
-          responsibilities?: string[]
           role: string
           slug: string
           status?: Database["public"]["Enums"]["job_status"]
@@ -284,7 +302,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          application_template_id?: string | null
           apply_url?: string | null
+          closing_date?: string | null
           commitment_type?: string
           created_at?: string
           description?: string
@@ -293,15 +313,21 @@ export type Database = {
           location?: string
           posting_date?: string | null
           published_at?: string | null
-          qualifications?: string[]
-          responsibilities?: string[]
           role?: string
           slug?: string
           status?: Database["public"]["Enums"]["job_status"]
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "jobs_application_template_id_fkey"
+            columns: ["application_template_id"]
+            isOneToOne: false
+            referencedRelation: "application_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       security_events: {
         Row: {

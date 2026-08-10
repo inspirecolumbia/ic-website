@@ -19,13 +19,16 @@ import { createJob, updateJob } from "@/app/admin/actions";
 import type { Database } from "@/lib/database.types";
 
 type JobRow = Database["public"]["Tables"]["jobs"]["Row"];
+type TemplateRow = Database["public"]["Tables"]["application_templates"]["Row"];
 type Panel = { mode: "new" } | { mode: "edit"; job: JobRow } | null;
 
 export default function JobsManager({
   initialJobs,
+  templates,
   canWrite,
 }: {
   initialJobs: JobRow[];
+  templates: TemplateRow[];
   canWrite: boolean;
 }) {
   const [panel, setPanel] = useState<Panel>(null);
@@ -154,6 +157,7 @@ export default function JobsManager({
             <JobForm
               key={panel.mode === "new" ? "new" : panel.job.id}
               job={panel.mode === "edit" ? panel.job : undefined}
+              templates={templates}
               title={panel.mode === "new" ? "New job" : `Edit ${panel.job.title}`}
               action={panel.mode === "new" ? createJob : updateJob.bind(null, panel.job.id)}
               onSuccess={handleSuccess}
