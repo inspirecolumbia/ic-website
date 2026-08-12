@@ -139,7 +139,7 @@ describe("anon writes via submit_application", () => {
            '[{"documentType":"resume","fileName":"r.pdf","storagePath":"applications/x/resume.pdf"},
              {"documentType":"transcript","fileName":"t.pdf","storagePath":"applications/x/transcript.pdf"}]'::jsonb,
            '[{"teamName":"Production and Operations","rank":1}]'::jsonb,
-           '[]'::jsonb
+           '[{"question":"What appeals to you about joining Inspire Columbia?","answer":"Because it matters."}]'::jsonb
          ) as submit_application`,
         [jobId, `ada-${Math.random().toString(36).slice(2)}@example.com`]
       );

@@ -1,5 +1,6 @@
 import type { Job } from "@/components/JobPosting";
 import type { Database } from "./database.types";
+import { jobPhotoPublicUrl } from "./storage";
 
 type JobRow = Database["public"]["Tables"]["jobs"]["Row"];
 export type DisplayStatus = "draft" | "published" | "scheduled" | "expired" | "closed" | "archived";
@@ -72,5 +73,6 @@ export function jobRowToJob(row: JobRow): Job {
     applyUrl: row.apply_url,
     postedDate: formatDate(row.posting_date),
     lastPublished: formatDate(row.published_at),
+    photoUrl: jobPhotoPublicUrl(row.photo_path),
   };
 }

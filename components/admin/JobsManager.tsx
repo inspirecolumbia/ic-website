@@ -73,11 +73,12 @@ export default function JobsManager({
     closeNow();
   }
 
-  function handleSuccess(id: string) {
+  function handleSuccess(id: string, notice?: string) {
     const isNew = panel?.mode === "new";
     setPanel(null);
     setDirty(false);
-    setSuccessMessage(isNew ? "Job created." : "Job saved.");
+    const base = isNew ? "Job created." : "Job saved.";
+    setSuccessMessage(notice ? `${base} ${notice}` : base);
     setFocusJobId(id);
   }
 

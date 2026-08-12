@@ -45,3 +45,73 @@ export function mapStorageError(message: string, documentType: "resume" | "trans
   }
   return `We couldn't upload your ${label}. Please check your connection and try again.`;
 }
+
+export class JobPhotoUploadError extends Error {}
+
+const JOB_PHOTOS_BUCKET = "job-photos";
+
+// A fresh, random object name per upload (not a fixed name like
+// `cover.webp`) is what makes the safe replace/remove ordering possible
+// upstream in app/admin/actions.ts: the new file can be uploaded to its own
+// path while the old one is still live, so there's never a moment where a
+// job has no working photo reference. Callers are responsible for deleting
+// the old path only after confirming the database row itself was updated
+// successfully -- see deleteJobPhotoObject below.
+export function buildJobPhotoStoragePath(jobId: string): string {
+  const id = crypto.randomUUID();
+  return `jobs/${jobId}/${id}.webp`;
+}
+
+// Upload only -- does not touch any previous photo. The cropper always
+// exports WebP (lib/imageCrop.ts), so this never branches on file type.
+export async function uploadJobPhoto(
+  supabase: SupabaseClient<Database>,
+  jobId: string,
+  file: File
+): Promise<string> {
+  const storagePath = buildJobPhotoStoragePath(jobId);
+  const { error } = await supabase.storage.from(JOB_PHOTOS_BUCKET).upload(storagePath, file, {
+    contentType: "image/webp",
+    upsert: false,
+  });
+
+  if (error) {
+    throw new JobPhotoUploadError(mapJobPhotoStorageError(error.message));
+  }
+
+  return storagePath;
+}
+
+// Best-effort cleanup, called only after the caller has confirmed it's safe
+// (the database no longer references this path, whether because a
+// replacement's DB update succeeded or a failed DB update is being rolled
+// back). A failure here just leaves an orphaned object in Storage rather
+// than losing a live photo reference, so it isn't surfaced as an error to
+// the admin.
+export async function deleteJobPhotoObject(
+  supabase: SupabaseClient<Database>,
+  photoPath: string
+): Promise<void> {
+  await supabase.storage.from(JOB_PHOTOS_BUCKET).remove([photoPath]);
+}
+
+// Public bucket, so this is plain string construction, not a network call --
+// same URL shape a Supabase client's getPublicUrl() would build, but usable
+// from both server code (lib/jobs.ts) and client components (JobPhotoField's
+// preview) without needing a Supabase client instance in either.
+export function jobPhotoPublicUrl(photoPath: string | null): string | null {
+  if (!photoPath) return null;
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${JOB_PHOTOS_BUCKET}/${photoPath}`;
+}
+
+export function mapJobPhotoStorageError(message: string): string {
+  const lower = message.toLowerCase();
+
+  if (lower.includes("exceeded") || lower.includes("size")) {
+    return "That photo is too large. Please try a different one.";
+  }
+  if (lower.includes("mime") || lower.includes("type")) {
+    return "Job photos must be a JPEG, PNG, or WebP image.";
+  }
+  return "We couldn't upload that photo. Please check your connection and try again.";
+}

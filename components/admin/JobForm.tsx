@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import JobPhotoField from "@/components/admin/JobPhotoField";
 import type { FormState } from "@/app/admin/actions";
 import type { Database } from "@/lib/database.types";
 
@@ -100,7 +101,7 @@ export default function JobForm({
   templates: TemplateRow[];
   title: string;
   action: (prevState: FormState, formData: FormData) => Promise<FormState>;
-  onSuccess?: (id: string) => void;
+  onSuccess?: (id: string, notice?: string) => void;
   onClose?: () => void;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
@@ -116,7 +117,7 @@ export default function JobForm({
   const [closingDateIso, setClosingDateIso] = useState(job?.closing_date ?? "");
 
   useEffect(() => {
-    if (state && "ok" in state) onSuccess?.(state.id ?? job?.id ?? "");
+    if (state && "ok" in state) onSuccess?.(state.id ?? job?.id ?? "", state.notice);
   }, [state, onSuccess, job?.id]);
 
   return (
@@ -268,6 +269,8 @@ export default function JobForm({
             Leave blank to keep it open indefinitely.
           </p>
         </div>
+
+        <JobPhotoField existingPhotoPath={job?.photo_path ?? null} onDirtyChange={onDirtyChange} />
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="description">
