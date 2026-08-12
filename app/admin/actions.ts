@@ -1,0 +1,235 @@
+"use server";
+
+import { createClerkSupabaseClient } from "@/lib/supabase/clerk";
+import { revalidatePath } from "next/cache";
+import type { Database } from "@/lib/database.types";
+
+type JobStatus = Database["public"]["Enums"]["job_status"];
+
+// display_order is intentionally not part of the form, ordering is set on
+// the jobs list via drag-and-drop or the up/down buttons (reorderJobs
+// below), never via this form. Omitting it here means create leaves it at
+// the column default and update never overwrites it.
+function jobFromFormData(formData: FormData) {
+  const templateId = formData.get("application_template_id") as string | null;
+  return {
+    slug: formData.get("slug") as string,
+    title: formData.get("title") as string,
+    role: formData.get("role") as string,
+    location: formData.get("location") as string,
+    commitment_type: formData.get("commitment_type") as string,
+    posting_date: (formData.get("posting_date") as string) || null,
+    closing_date: (formData.get("closing_date") as string) || null,
+    description: formData.get("description") as string,
+    apply_url: (formData.get("apply_url") as string) || null,
+    // "none" is the form's sentinel for "no template" -- a real Select
+    // value can't be an empty string in this UI kit, so it can't just be "".
+    application_template_id: templateId && templateId !== "none" ? templateId : null,
+  };
+}
+
+export type FormState = { error: string } | { ok: true; id?: string } | null;
+
+const nowIso = () => new Date().toISOString();
+
+// posting_date/closing_date arrive as full ISO-with-Z instants (converted
+// client-side from the admin form's local datetime-local inputs -- see
+// JobForm.tsx). Plain string comparison still gives the right chronological
+// answer for that format, no need to parse into Date objects.
+function validatePostingDate(postingDate: string | null): string | null {
+  if (postingDate && postingDate < nowIso()) {
+    return "Posting date/time can't be in the past.";
+  }
+  return null;
+}
+
+function validateClosingDate(postingDate: string | null, closingDate: string | null): string | null {
+  if (closingDate && postingDate && closingDate < postingDate) {
+    return "Closing date/time can't be before the posting date/time.";
+  }
+  return null;
+}
+
+// Server-side backstop for the required fields -- the admin form already
+// marks these required via HTML, but that alone is bypassable (direct
+// request, or the attribute silently missing), and without this the only
+// backstop was a raw Postgres NOT NULL violation surfacing as an ugly
+// unformatted error instead of a friendly message.
+function validateJobFields(job: ReturnType<typeof jobFromFormData>): string | null {
+  if (!job.title?.trim()) return "Title is required.";
+  if (!job.slug?.trim()) return "Web address is required.";
+  if (!job.role?.trim()) return "Program / role is required.";
+  if (!job.location?.trim()) return "Location is required.";
+  if (!job.description?.trim()) return "Description is required.";
+  return null;
+}
+
+export async function createJob(prevState: FormState, formData: FormData): Promise<FormState> {
+  const job = jobFromFormData(formData);
+  const fieldError = validateJobFields(job);
+  if (fieldError) return { error: fieldError };
+  const dateError = validatePostingDate(job.posting_date) ?? validateClosingDate(job.posting_date, job.closing_date);
+  if (dateError) return { error: dateError };
+
+  const supabase = createClerkSupabaseClient();
+  const { data, error } = await supabase.from("jobs").insert(job).select("id").single();
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/jobs");
+  revalidatePath("/jobs");
+  return { ok: true, id: data.id };
+}
+
+export async function updateJob(id: string, prevState: FormState, formData: FormData): Promise<FormState> {
+  const job = jobFromFormData(formData);
+  const fieldError = validateJobFields(job);
+  if (fieldError) return { error: fieldError };
+  const dateError = validatePostingDate(job.posting_date) ?? validateClosingDate(job.posting_date, job.closing_date);
+  if (dateError) return { error: dateError };
+
+  const status = formData.get("status") as JobStatus;
+  const supabase = createClerkSupabaseClient();
+  const { error } = await supabase
+    .from("jobs")
+    .update({
+      ...job,
+      status,
+      // published_at tracks the most recent time this job went live, not
+      // the first -- re-publishing after a closure should update it, same
+      // as transitionStatus below.
+      ...(status === "published" ? { published_at: new Date().toISOString() } : {}),
+    })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/jobs");
+  revalidatePath("/jobs");
+  revalidatePath(`/jobs/${job.slug}`);
+  return { ok: true };
+}
+
+// Strips a previous -copy-N suffix so duplicating an already-duplicated job
+// doesn't stack suffixes (associate-2026-copy-1-copy-1-...), duplicates
+// always number off the original's own slug.
+function baseSlug(slug: string) {
+  return slug.replace(/-copy-\d+$/, "");
+}
+
+export async function duplicateJob(id: string) {
+  const supabase = createClerkSupabaseClient();
+  const { data: original, error: fetchError } = await supabase
+    .from("jobs")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (fetchError) return;
+
+  const base = baseSlug(original.slug);
+  const { data: existing } = await supabase
+    .from("jobs")
+    .select("slug")
+    .like("slug", `${base}-copy-%`);
+
+  const usedNumbers = new Set(
+    (existing ?? [])
+      .map((row) => {
+        const match = row.slug.match(new RegExp(`^${base}-copy-(\\d+)$`));
+        return match ? Number(match[1]) : null;
+      })
+      .filter((n): n is number => n !== null)
+  );
+  let n = 1;
+  while (usedNumbers.has(n)) n++;
+
+  const { error: insertError } = await supabase.from("jobs").insert({
+    slug: `${base}-copy-${n}`,
+    title: original.title,
+    role: original.role,
+    location: original.location,
+    commitment_type: original.commitment_type,
+    posting_date: original.posting_date,
+    closing_date: original.closing_date,
+    description: original.description,
+    apply_url: original.apply_url,
+    application_template_id: original.application_template_id,
+    display_order: original.display_order,
+    status: "draft",
+    published_at: null,
+  });
+
+  if (insertError) return;
+  revalidatePath("/admin/jobs");
+}
+
+export async function deleteJob(id: string): Promise<{ error: string } | null> {
+  const supabase = createClerkSupabaseClient();
+  const { error } = await supabase.from("jobs").delete().eq("id", id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/jobs");
+  revalidatePath("/jobs");
+  return null;
+}
+
+export async function bulkDeleteJobs(ids: string[]): Promise<{ error: string } | null> {
+  const supabase = createClerkSupabaseClient();
+  const { error } = await supabase.from("jobs").delete().in("id", ids);
+  revalidatePath("/admin/jobs");
+  revalidatePath("/jobs");
+  return error ? { error: error.message } : null;
+}
+
+export async function reorderJobs(orderedIds: string[]): Promise<{ error: string } | null> {
+  const supabase = createClerkSupabaseClient();
+  const results = await Promise.all(
+    orderedIds.map((id, index) =>
+      supabase.from("jobs").update({ display_order: index }).eq("id", id)
+    )
+  );
+  const failed = results.find((r) => r.error);
+  revalidatePath("/admin/jobs");
+  revalidatePath("/jobs");
+  return failed ? { error: failed.error!.message } : null;
+}
+
+export type HistoryDeleteScope = "selected" | "page" | "all_matching";
+
+export async function bulkDeleteHistory(
+  ids: string[],
+  scope: HistoryDeleteScope,
+  filtersSnapshot: Record<string, unknown> | null
+): Promise<{ error: string } | { deletedCount: number }> {
+  const supabase = createClerkSupabaseClient();
+  const { data, error } = await supabase.rpc("admin_bulk_delete_history", {
+    p_ids: ids,
+    p_scope: scope,
+    p_filters: filtersSnapshot as Database["public"]["Tables"]["security_events"]["Row"]["filters_snapshot"],
+  });
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/history");
+  return { deletedCount: data ?? 0 };
+}
+
+export async function transitionStatus(id: string, status: JobStatus): Promise<{ error: string } | null> {
+  const supabase = createClerkSupabaseClient();
+
+  if (status === "published") {
+    // published_at tracks the most recent publish, not the first -- always
+    // overwritten here so staff can see when a re-published job actually
+    // went live again, not the date of its original publish.
+    const { error } = await supabase
+      .from("jobs")
+      .update({ status, published_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) return { error: error.message };
+  } else {
+    const { error } = await supabase.from("jobs").update({ status }).eq("id", id);
+    if (error) return { error: error.message };
+  }
+
+  revalidatePath("/admin/jobs");
+  revalidatePath("/jobs");
+  return null;
+}

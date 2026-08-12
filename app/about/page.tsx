@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Footer from "@/components/Footer";
+import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
 
 export const metadata: Metadata = {
@@ -17,66 +17,12 @@ export const metadata: Metadata = {
   },
 };
 
-const cSuite = [
-  {
-    name: "Luke Jannazzo",
-    title: "Chief Executive Officer",
-    bio: "Luke is a student at the University of South Carolina and previously served as the Event Manager of TEDxCongaree Vista.",
-    headshot: "/headshots/luke.jpg",
-  },
-  {
-    name: "Owen Coulam",
-    title: "Chief Operating Officer",
-    bio: "Owen is a Computer Science and Mathematics student at the University of South Carolina and previously served as Curation Director of TEDxCongaree Vista.",
-    headshot: "/headshots/owen.jpg",
-  },
-  {
-    name: "Tyler Zolkos",
-    title: "Chief Marketing Officer",
-    bio: "Tyler is a Computer Science student at the University of South Carolina with 8+ years of experience in graphic design and stage production.",
-    headshot: "/headshots/tyler.webp",
-  },
-];
-
-const boardMembers = [
-  {
-    name: "Darssan Eswaramoorthi",
-    title: "President",
-    bio: "Darssan is a Computer Engineering graduate of the University of South Carolina and previously served as Executive Producer of TEDxCongaree Vista.",
-    headshot: "/headshots/darssan.jpg",
-  },
-  {
-    name: "Shyam Ganesh Babu",
-    title: "Secretary",
-    bio: "Shyam is a Biological Sciences student at the University of South Carolina who previously served as the Lead Organizer of TEDxCongaree Vista.",
-    headshot: "/headshots/shyam.jpg",
-  },
-  {
-    name: "Sai Varun Nallu",
-    title: "Treasurer",
-    bio: "Sai is a Neuroscience student at the University of South Carolina and previously served as Sponsorships & Budget Director of TEDxCongaree Vista.",
-    headshot: "/headshots/sai.jpg",
-  },
-  {
-    name: "Owen Coulam",
-    title: "Board Member",
-    bio: "Owen is a Computer Science and Mathematics student at the University of South Carolina and previously served as Curation Director of TEDxCongaree Vista.",
-    headshot: "/headshots/owen.jpg",
-  },
-  {
-    name: "Tim George",
-    title: "Board Member",
-    bio: "Tim is a Public Health student at the University of South Carolina and previously served as a Curation Assistant for TEDxCongaree Vista.",
-    headshot: "/headshots/tim.jpg",
-  },
-];
-
 export default function AboutPage() {
   return (
     <>
       <SiteHeader currentPath="/about" />
       <main className="text-[var(--ink)]">
-        <section className="bg-[rgba(220,236,255,0.55)] py-14 md:py-[4.5rem]">
+        <section className="bg-[var(--surface-blue)] py-14 md:py-[4.5rem]">
           <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
             <h1 className="m-0 max-w-[22ch] [font-family:var(--font-serif)] text-[clamp(2rem,5vw,4.2rem)] leading-[1.1] font-semibold">
               About Inspire Columbia
@@ -90,86 +36,76 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="bg-[rgba(255,255,255,0.55)] py-13 md:py-16">
+        <section className="bg-[var(--surface)] py-13 md:py-16">
           <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
-            <h2 className="mb-2 mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
-              Executive Leadership
+            <h2 className="mb-8 mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
+              Mission Statement
             </h2>
-            <p className="mb-10 max-w-[60ch] text-[1.1rem] text-[var(--ink-muted)]">
-              Our executive team oversees the day-to-day operations and strategic initiatives of Inspire Columbia.
-            </p>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {cSuite.map((member) => (
-                <div
-                  key={member.title}
-                  className="border border-[var(--line)] bg-[rgba(255,255,255,0.7)] p-6"
-                >
-                  {member.headshot ? (
-                    <Image
-                      src={member.headshot}
-                      alt={member.name}
-                      width={80}
-                      height={80}
-                      className="mb-4 h-20 w-20 rounded-full object-cover object-top"
-                    />
-                  ) : (
-                    <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-[var(--line)] bg-[var(--surface-strong)] text-[0.6rem] font-bold uppercase tracking-widest text-[var(--ink-muted)]">
-                      Photo
-                    </div>
-                  )}
-                  <p className="m-0 text-[1.15rem] font-bold">{member.name || "TBD"}</p>
-                  <p className="mb-3 mt-0.5 text-sm font-semibold uppercase tracking-[0.08em] text-[var(--brand)]">
-                    {member.title}
-                  </p>
-                  {member.bio && (
-                    <p className="m-0 text-[0.95rem] text-[var(--ink-muted)]">{member.bio}</p>
-                  )}
-                </div>
-              ))}
+            <div className="w-full rounded-[10px] bg-[var(--surface-blue)] px-7 py-7 md:px-9 md:py-8">
+              <p className="m-0 [font-family:var(--font-serif)] text-[clamp(1.1rem,1.9vw,1.35rem)] leading-[1.5] font-medium">
+                Inspire Columbia creates stages for the stories, ideas, and talent that make our city extraordinary. We connect our community through powerful ideas and give Columbia&#39;s best a chance to be seen.
+              </p>
             </div>
           </div>
         </section>
 
-        <section className="bg-[rgba(240,246,255,0.55)] py-13 md:py-16">
+        <section className="bg-[var(--surface)] pb-13 md:pb-16">
           <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
-            <h2 className="mb-2 mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
-              Board of Directors
+            <h2 className="mb-8 mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
+              Our Story
             </h2>
-            <p className="mb-10 max-w-[60ch] text-[1.1rem] text-[var(--ink-muted)]">
-              Our board guides the strategic direction of the organization and is responsible
-              for ensuring we fulfill our mission.
-            </p>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {boardMembers.map((member) => (
-                <div
-                  key={member.name + member.title}
-                  className="border border-[var(--line)] bg-[rgba(255,255,255,0.7)] p-6"
-                >
-                  {member.headshot ? (
-                    <Image
-                      src={member.headshot}
-                      alt={member.name}
-                      width={80}
-                      height={80}
-                      className="mb-4 h-20 w-20 rounded-full object-cover object-top"
-                    />
-                  ) : (
-                    <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-[var(--line)] bg-[var(--surface-strong)] text-[0.6rem] font-bold uppercase tracking-widest text-[var(--ink-muted)]">
-                      Photo
-                    </div>
-                  )}
-                  <p className="m-0 text-[1.15rem] font-bold">{member.name}</p>
-                  <p className="mb-3 mt-0.5 text-sm font-semibold uppercase tracking-[0.08em] text-[var(--brand)]">
-                    {member.title}
-                  </p>
-                  <p className="m-0 text-[0.95rem] text-[var(--ink-muted)]">{member.bio}</p>
-                </div>
-              ))}
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,1fr)_300px]">
+              <div>
+                <p className="mb-5 max-w-[65ch] text-[1.15rem]">
+                  Inspire Columbia was founded by University of South Carolina students who wanted
+                  to bring professional-grade civic programming back to their own city. Formerly
+                  known as ChangeMakers Events, the organization is entirely student-run, handling
+                  its own event production, sponsorships, and community outreach, and it reinvests
+                  every dollar it raises directly into the Columbia community.
+                </p>
+                <p className="mb-5 max-w-[65ch] text-[1.15rem]">
+                  Our flagship production, TEDxCongaree Vista, is the first standard TEDx event
+                  held in Columbia in over ten years. Beyond our flagship event, we run an annual
+                  associate program that gives Columbia-area students hands-on experience
+                  producing real community programming.
+                </p>
+                <p className="m-0 max-w-[65ch] text-[1.15rem]">
+                  As a 501(c)(3) nonprofit corporation, all donations to Inspire Columbia are
+                  fully tax-deductible. Funds raised stay local, covering the essential costs of
+                  putting on accessible, informative, and action-oriented events for the
+                  community.
+                </p>
+              </div>
+              <div className="flex h-fit items-center justify-center overflow-hidden rounded-[10px] bg-[var(--surface-blue-strong)] p-10 shadow-[0_12px_32px_rgba(10,14,26,0.18)]">
+                <Image
+                  src="/pictures/inspire-columbia-logo-square.png"
+                  alt="Inspire Columbia logo mark"
+                  width={401}
+                  height={401}
+                  className="block h-auto w-full max-w-[220px] object-contain"
+                />
+              </div>
             </div>
           </div>
         </section>
+
+        <section className="bg-[var(--surface-blue)] py-13 md:py-16">
+          <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
+            <h2 className="mb-4 mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold text-black">
+              Meet Our Leadership
+            </h2>
+            <p className="mb-8 max-w-[60ch] text-[1.1rem] text-black/80">
+              Inspire Columbia is run entirely by current University of South Carolina students.
+            </p>
+            <Link
+              href="/leadership"
+              className="inline-block rounded-full bg-[var(--brand)] px-7 py-3.5 font-bold text-[var(--surface-blue)] no-underline transition-colors duration-150 hover:bg-black/90"
+            >
+              Meet the Team
+            </Link>
+          </div>
+        </section>
       </main>
-      <Footer />
     </>
   );
 }

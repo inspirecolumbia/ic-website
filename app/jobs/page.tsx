@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Footer from "@/components/Footer";
 import SiteHeader from "@/components/SiteHeader";
-import type { Job } from "@/components/JobPosting";
-import jobs from "@/data/jobs.json";
+import { createClient } from "@/lib/supabase/public";
+import { jobRowToJob } from "@/lib/jobs";
+
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Open Roles",
@@ -19,14 +20,22 @@ export const metadata: Metadata = {
   },
 };
 
-export default function JobsIndexPage() {
-  const openRoles = jobs as Job[];
+export default async function JobsIndexPage() {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("jobs")
+    .select("*")
+    .eq("status", "published")
+    .order("display_order")
+    .order("published_at", { ascending: false });
+
+  const openRoles = (data ?? []).map(jobRowToJob);
 
   return (
     <>
       <SiteHeader currentPath="/jobs" />
       <main className="text-[var(--ink)]">
-        <section className="bg-[rgba(220,236,255,0.55)] py-14 md:py-[4.5rem]">
+        <section className="bg-[var(--surface-blue)] py-14 md:py-[4.5rem]">
           <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
             <h1 className="m-0 max-w-[22ch] [font-family:var(--font-serif)] text-[clamp(2rem,5vw,4.2rem)] leading-[1.1] font-semibold">
               Open roles
@@ -38,7 +47,7 @@ export default function JobsIndexPage() {
           </div>
         </section>
 
-        <section className="bg-[rgba(255,255,255,0.55)] py-13 md:py-16">
+        <section className="bg-[var(--surface)] py-13 md:py-16">
           <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
             {openRoles.length === 0 ? (
               <p className="max-w-[60ch] text-[1.1rem] text-[var(--ink-muted)]">
@@ -57,7 +66,7 @@ export default function JobsIndexPage() {
                   <li key={job.slug}>
                     <Link
                       href={`/jobs/${job.slug}`}
-                      className="block h-full border border-[var(--line)] bg-[rgba(255,255,255,0.7)] p-6 no-underline transition-colors duration-200 hover:border-[var(--brand)]"
+                      className="block h-full rounded-[10px] border border-[var(--line)] bg-[var(--card-public)] p-6 no-underline transition-all duration-150 hover:border-[var(--brand)] hover:shadow-[0_8px_24px_rgba(29,78,216,0.12)]"
                     >
                       <p className="m-0 text-sm font-semibold uppercase tracking-[0.08em] text-[var(--brand)]">
                         {job.role}
@@ -76,7 +85,6 @@ export default function JobsIndexPage() {
           </div>
         </section>
       </main>
-      <Footer />
     </>
   );
 }
