@@ -80,6 +80,13 @@ describe("jobs RLS", () => {
     await withTransaction(async (client) => {
       const jobId = await seedJob(client);
       await impersonate(client, asAnon());
+
+      // Postgres aborts the whole transaction on the first error and
+      // refuses every later statement with "current transaction is
+      // aborted..." regardless of what it is -- a savepoint per assertion
+      // is what lets each one actually get checked instead of only ever
+      // proving the first.
+      await client.query("savepoint sp");
       await expect(
         client.query(
           `insert into public.jobs (title, role, location, commitment_type, apply_url, description, slug)
@@ -87,12 +94,19 @@ describe("jobs RLS", () => {
           [`rls-test-job-${Math.random().toString(36).slice(2)}`]
         )
       ).rejects.toThrow(/permission denied/i);
+      await client.query("rollback to savepoint sp");
+
+      await client.query("savepoint sp");
       await expect(
         client.query("update public.jobs set title = 'changed' where id = $1", [jobId])
       ).rejects.toThrow(/permission denied/i);
+      await client.query("rollback to savepoint sp");
+
+      await client.query("savepoint sp");
       await expect(client.query("delete from public.jobs where id = $1", [jobId])).rejects.toThrow(
         /permission denied/i
       );
+      await client.query("rollback to savepoint sp");
     });
   });
 
@@ -102,9 +116,11 @@ describe("jobs RLS", () => {
       await impersonate(client, asMember());
       const { rows } = await client.query("select * from public.jobs where id = $1", [jobId]);
       expect(rows).toHaveLength(1);
-      await expect(
-        client.query("update public.jobs set title = 'changed' where id = $1", [jobId])
-      ).rejects.toThrow(/permission denied|row-level security/i);
+      // jobs grants UPDATE to the whole authenticated role and narrows via
+      // RLS USING, so a member's update against a row RLS hides from them
+      // doesn't error -- it just matches 0 rows and resolves normally.
+      const result = await client.query("update public.jobs set title = 'changed' where id = $1", [jobId]);
+      expect(result.rowCount).toBe(0);
     });
   });
 
