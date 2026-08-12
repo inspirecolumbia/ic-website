@@ -3,6 +3,7 @@
 import { createClerkSupabaseClient } from "@/lib/supabase/clerk";
 import { revalidatePath } from "next/cache";
 import type { Database } from "@/lib/database.types";
+import { deleteJobPhotoObject, JobPhotoUploadError, uploadJobPhoto } from "@/lib/storage";
 
 type JobStatus = Database["public"]["Enums"]["job_status"];
 
@@ -28,7 +29,7 @@ function jobFromFormData(formData: FormData) {
   };
 }
 
-export type FormState = { error: string } | { ok: true; id?: string } | null;
+export type FormState = { error: string } | { ok: true; id?: string; notice?: string } | null;
 
 const nowIso = () => new Date().toISOString();
 
@@ -36,11 +37,16 @@ const nowIso = () => new Date().toISOString();
 // client-side from the admin form's local datetime-local inputs -- see
 // JobForm.tsx). Plain string comparison still gives the right chronological
 // answer for that format, no need to parse into Date objects.
-function validatePostingDate(postingDate: string | null): string | null {
-  if (postingDate && postingDate < nowIso()) {
-    return "Posting date/time can't be in the past.";
+//
+// A past date/time isn't rejected -- it's quietly common (a form left open
+// past midnight, a timezone mixup) rather than a deliberate choice, so it's
+// clamped forward to "now" instead of blocking the save. The caller surfaces
+// this back to the admin as a non-blocking notice, not silently.
+function clampToNowIfPast(date: string | null, now: string): { value: string | null; wasClamped: boolean } {
+  if (date && date < now) {
+    return { value: now, wasClamped: true };
   }
-  return null;
+  return { value: date, wasClamped: false };
 }
 
 function validateClosingDate(postingDate: string | null, closingDate: string | null): string | null {
@@ -48,6 +54,26 @@ function validateClosingDate(postingDate: string | null, closingDate: string | n
     return "Closing date/time can't be before the posting date/time.";
   }
   return null;
+}
+
+function pastDateClampNotice(postingClamped: boolean, closingClamped: boolean): string | undefined {
+  if (postingClamped && closingClamped) {
+    return "Posting and closing times were in the past, so both were set to now.";
+  }
+  if (postingClamped) return "Posting time was in the past, so it was set to now.";
+  if (closingClamped) return "Closing time was in the past, so it was set to now.";
+  return undefined;
+}
+
+function joinNotices(...notices: (string | undefined)[]): string | undefined {
+  const present = notices.filter((n): n is string => Boolean(n));
+  return present.length ? present.join(" ") : undefined;
+}
+
+function photoUploadErrorMessage(err: unknown): string {
+  return err instanceof JobPhotoUploadError
+    ? err.message
+    : "We couldn't upload that photo. Please check your connection and try again.";
 }
 
 // Server-side backstop for the required fields -- the admin form already
@@ -68,32 +94,115 @@ export async function createJob(prevState: FormState, formData: FormData): Promi
   const job = jobFromFormData(formData);
   const fieldError = validateJobFields(job);
   if (fieldError) return { error: fieldError };
-  const dateError = validatePostingDate(job.posting_date) ?? validateClosingDate(job.posting_date, job.closing_date);
+
+  const now = nowIso();
+  const postingClamp = clampToNowIfPast(job.posting_date, now);
+  const closingClamp = clampToNowIfPast(job.closing_date, now);
+  job.posting_date = postingClamp.value;
+  job.closing_date = closingClamp.value;
+
+  const dateError = validateClosingDate(job.posting_date, job.closing_date);
   if (dateError) return { error: dateError };
 
+  const photo = formData.get("photo");
   const supabase = createClerkSupabaseClient();
   const { data, error } = await supabase.from("jobs").insert(job).select("id").single();
 
   if (error) return { error: error.message };
+
+  // The job row already exists at this point -- a photo upload/association
+  // failure here is reported as a notice, not an error, so the admin
+  // doesn't think job creation itself failed and end up with a duplicate on
+  // retry.
+  let photoError: string | undefined;
+  if (photo instanceof File && photo.size > 0) {
+    try {
+      const photoPath = await uploadJobPhoto(supabase, data.id, photo);
+      const { error: photoUpdateError } = await supabase
+        .from("jobs")
+        .update({ photo_path: photoPath })
+        .eq("id", data.id);
+      if (photoUpdateError) {
+        // Roll back the upload -- the database never ended up referencing
+        // it, so leaving it in Storage would just orphan the object.
+        await deleteJobPhotoObject(supabase, photoPath);
+        photoError = photoUpdateError.message;
+      }
+    } catch (err) {
+      photoError = photoUploadErrorMessage(err);
+    }
+  }
+
   revalidatePath("/admin/jobs");
   revalidatePath("/jobs");
-  return { ok: true, id: data.id };
+  return {
+    ok: true,
+    id: data.id,
+    notice: joinNotices(
+      pastDateClampNotice(postingClamp.wasClamped, closingClamp.wasClamped),
+      photoError ? `Job created, but the photo didn't upload: ${photoError}` : undefined
+    ),
+  };
 }
 
 export async function updateJob(id: string, prevState: FormState, formData: FormData): Promise<FormState> {
   const job = jobFromFormData(formData);
   const fieldError = validateJobFields(job);
   if (fieldError) return { error: fieldError };
-  const dateError = validatePostingDate(job.posting_date) ?? validateClosingDate(job.posting_date, job.closing_date);
+
+  const now = nowIso();
+  const postingClamp = clampToNowIfPast(job.posting_date, now);
+  const closingClamp = clampToNowIfPast(job.closing_date, now);
+  job.posting_date = postingClamp.value;
+  job.closing_date = closingClamp.value;
+
+  const dateError = validateClosingDate(job.posting_date, job.closing_date);
   if (dateError) return { error: dateError };
 
+  const photo = formData.get("photo");
+  const removePhoto = formData.get("remove_photo") === "true";
+  const currentPhotoPath = (formData.get("current_photo_path") as string) || null;
   const status = formData.get("status") as JobStatus;
   const supabase = createClerkSupabaseClient();
+
+  // Default: keep whatever photo was already there.
+  let photoPath = currentPhotoPath;
+  let photoError: string | undefined;
+  let uploadedPathForRollback: string | null = null;
+  let oldPathToDeleteAfterSuccess: string | null = null;
+
+  if (photo instanceof File && photo.size > 0) {
+    // Replace: upload the new file to its own fresh path first, before
+    // touching the database row or the old object -- the old photo stays
+    // live the whole time, so a failure anywhere in this sequence still
+    // leaves the job with a working photo reference.
+    try {
+      const newPath = await uploadJobPhoto(supabase, id, photo);
+      photoPath = newPath;
+      uploadedPathForRollback = newPath;
+      if (currentPhotoPath) oldPathToDeleteAfterSuccess = currentPhotoPath;
+    } catch (err) {
+      // A failed upload keeps whatever photo was already there rather than
+      // clearing it -- losing the existing photo because the replacement
+      // upload hit a network blip would be a worse outcome than just not
+      // swapping it.
+      photoPath = currentPhotoPath;
+      photoError = photoUploadErrorMessage(err);
+    }
+  } else if (removePhoto && currentPhotoPath) {
+    // Remove: the database reference is cleared by the update below; the
+    // Storage object itself is only deleted once that's confirmed to have
+    // actually landed.
+    photoPath = null;
+    oldPathToDeleteAfterSuccess = currentPhotoPath;
+  }
+
   const { error } = await supabase
     .from("jobs")
     .update({
       ...job,
       status,
+      photo_path: photoPath,
       // published_at tracks the most recent time this job went live, not
       // the first -- re-publishing after a closure should update it, same
       // as transitionStatus below.
@@ -101,11 +210,27 @@ export async function updateJob(id: string, prevState: FormState, formData: Form
     })
     .eq("id", id);
 
-  if (error) return { error: error.message };
+  if (error) {
+    // The main update failed -- if a new photo was uploaded for it, it's
+    // now an orphan the database never ended up referencing.
+    if (uploadedPathForRollback) await deleteJobPhotoObject(supabase, uploadedPathForRollback);
+    return { error: error.message };
+  }
+
+  // Only now, after the database confirms the new state, is it safe to
+  // delete whatever the old photo pointed to.
+  if (oldPathToDeleteAfterSuccess) await deleteJobPhotoObject(supabase, oldPathToDeleteAfterSuccess);
+
   revalidatePath("/admin/jobs");
   revalidatePath("/jobs");
   revalidatePath(`/jobs/${job.slug}`);
-  return { ok: true };
+  return {
+    ok: true,
+    notice: joinNotices(
+      pastDateClampNotice(postingClamp.wasClamped, closingClamp.wasClamped),
+      photoError ? `Job saved, but the photo didn't upload: ${photoError}` : undefined
+    ),
+  };
 }
 
 // Strips a previous -copy-N suffix so duplicating an already-duplicated job
@@ -164,9 +289,15 @@ export async function duplicateJob(id: string) {
 
 export async function deleteJob(id: string): Promise<{ error: string } | null> {
   const supabase = createClerkSupabaseClient();
+  const { data: existing } = await supabase.from("jobs").select("photo_path").eq("id", id).single();
   const { error } = await supabase.from("jobs").delete().eq("id", id);
 
   if (error) return { error: error.message };
+  // Best-effort: the row is already gone either way, so a cleanup failure
+  // here just leaves an orphaned Storage object rather than blocking the
+  // delete the admin actually asked for.
+  if (existing?.photo_path) await deleteJobPhotoObject(supabase, existing.photo_path);
+
   revalidatePath("/admin/jobs");
   revalidatePath("/jobs");
   return null;
@@ -174,10 +305,15 @@ export async function deleteJob(id: string): Promise<{ error: string } | null> {
 
 export async function bulkDeleteJobs(ids: string[]): Promise<{ error: string } | null> {
   const supabase = createClerkSupabaseClient();
+  const { data: existing } = await supabase.from("jobs").select("photo_path").in("id", ids);
   const { error } = await supabase.from("jobs").delete().in("id", ids);
   revalidatePath("/admin/jobs");
   revalidatePath("/jobs");
-  return error ? { error: error.message } : null;
+  if (error) return { error: error.message };
+
+  const photoPaths = (existing ?? []).map((row) => row.photo_path).filter((p): p is string => Boolean(p));
+  await Promise.all(photoPaths.map((path) => deleteJobPhotoObject(supabase, path)));
+  return null;
 }
 
 export async function reorderJobs(orderedIds: string[]): Promise<{ error: string } | null> {

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
@@ -20,6 +21,7 @@ export type Job = {
   applyUrl: string | null;
   postedDate: string;
   lastPublished: string;
+  photoUrl: string | null;
 };
 
 // This project has no @tailwindcss/typography plugin, so Markdown output
@@ -80,51 +82,81 @@ function ApplyButton({ jobTitle, jobSlug, applyUrl }: { jobTitle: string; jobSlu
 export default function JobPosting({ job }: { job: Job }) {
   return (
     <main className="text-[var(--ink)]">
-      <section className="bg-[var(--surface-blue)] py-14 md:py-[4.5rem]">
+      <section className="bg-[var(--surface-blue)]">
         <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
-          <nav aria-label="Breadcrumb" className="mb-6 text-sm text-[var(--ink-muted)]">
-            <ol className="m-0 flex list-none items-center p-0">
-              <li>
-                <Link href="/" className="no-underline hover:underline">
-                  Home
-                </Link>
-              </li>
-              <li aria-hidden="true" className="mx-2">
-                /
-              </li>
-              <li>
-                <Link href="/jobs" className="no-underline hover:underline">
-                  Jobs
-                </Link>
-              </li>
-              <li aria-hidden="true" className="mx-2">
-                /
-              </li>
-              <li aria-current="page" className="text-[var(--ink)]">
+          {/* No gap and no shared vertical padding here on purpose: the photo
+              column carries zero padding of its own so it stretches, via
+              grid's default item-stretch, to exactly match the text
+              column's height (flush with the section's top and bottom edges
+              on desktop) instead of being independently centered/inset. */}
+          <div className={job.photoUrl ? "grid md:grid-cols-2" : undefined}>
+            <div className="py-14 md:py-[4.5rem]">
+              <nav aria-label="Breadcrumb" className="mb-6 text-sm text-[var(--ink-muted)]">
+                <ol className="m-0 flex list-none items-center p-0">
+                  <li>
+                    <Link href="/" className="no-underline hover:underline">
+                      Home
+                    </Link>
+                  </li>
+                  <li aria-hidden="true" className="mx-2">
+                    /
+                  </li>
+                  <li>
+                    <Link href="/jobs" className="no-underline hover:underline">
+                      Jobs
+                    </Link>
+                  </li>
+                  <li aria-hidden="true" className="mx-2">
+                    /
+                  </li>
+                  <li aria-current="page" className="text-[var(--ink)]">
+                    {job.title}
+                  </li>
+                </ol>
+              </nav>
+
+              <p className="m-0 text-[0.9rem] font-bold uppercase tracking-[0.08em] text-[var(--ink-muted)]">
+                {job.role}
+              </p>
+              <h1 className="mb-4 mt-4 max-w-[22ch] [font-family:var(--font-serif)] text-[clamp(2rem,5vw,4.2rem)] leading-[1.1] font-semibold">
                 {job.title}
-              </li>
-            </ol>
-          </nav>
+              </h1>
 
-          <p className="m-0 text-[0.9rem] font-bold uppercase tracking-[0.08em] text-[var(--ink-muted)]">
-            {job.role}
-          </p>
-          <h1 className="mb-4 mt-4 max-w-[22ch] [font-family:var(--font-serif)] text-[clamp(2rem,5vw,4.2rem)] leading-[1.1] font-semibold">
-            {job.title}
-          </h1>
+              <div className="mb-8 flex flex-wrap gap-2">
+                {job.quickFacts.map((fact) => (
+                  <span
+                    key={fact.label}
+                    className="border border-[var(--line)] bg-[var(--card-public)] px-3 py-1.5 text-[0.85rem] font-medium text-[var(--ink-muted)]"
+                  >
+                    {fact.label}: {fact.value}
+                  </span>
+                ))}
+              </div>
 
-          <div className="mb-8 flex flex-wrap gap-2">
-            {job.quickFacts.map((fact) => (
-              <span
-                key={fact.label}
-                className="border border-[var(--line)] bg-[var(--card-public)] px-3 py-1.5 text-[0.85rem] font-medium text-[var(--ink-muted)]"
-              >
-                {fact.label}: {fact.value}
-              </span>
-            ))}
+              <ApplyButton jobTitle={job.title} jobSlug={job.slug} applyUrl={job.applyUrl} />
+            </div>
+
+            {job.photoUrl && (
+              // On desktop, height comes from the grid row (matching the
+              // text column, flush with the section's top/bottom edges) --
+              // there's no sibling row to stretch to once it stacks on
+              // mobile, so aspect-[4/3] is a fallback there only. (Tracks
+              // JOB_PHOTO_ASPECT_RATIO in lib/jobPhoto.ts; kept as a literal
+              // class since Tailwind can't resolve an interpolated
+              // arbitrary-value class at build time.) No rounded corners,
+              // by design, unlike most other cards on this page.
+              <div className="relative aspect-[4/3] w-full overflow-hidden md:aspect-auto">
+                <Image
+                  src={job.photoUrl}
+                  alt={`Photo for the ${job.title} position at Inspire Columbia`}
+                  fill
+                  sizes="(min-width: 768px) 50vw, 100vw"
+                  className="object-cover"
+                  priority
+                />
+              </div>
+            )}
           </div>
-
-          <ApplyButton jobTitle={job.title} jobSlug={job.slug} applyUrl={job.applyUrl} />
         </div>
       </section>
 
