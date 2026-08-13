@@ -1,5 +1,5 @@
 import type { Database } from "./database.types";
-import { SCHOOL_EMAIL_DOMAINS } from "./screening";
+import { SCHOOL_EMAIL_DOMAINS, SCHOOLS, TEAMS } from "./screening";
 
 type ApplicationRow = Database["public"]["Tables"]["applications"]["Row"];
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
@@ -103,7 +103,7 @@ export type ApplicationSubmissionInput = {
   firstName: string;
   lastName: string;
   email: string;
-  phone?: string;
+  phone: string;
   schoolEmail: string;
   school: string;
   major: string;
@@ -115,15 +115,15 @@ export type ApplicationSubmissionInput = {
 };
 
 // The generated Args type marks every param as required/non-null since none
-// of the SQL function's parameters have a DEFAULT -- but p_phone and p_gpa
-// are genuinely optional at the app layer and get passed through as an
-// explicit SQL null, which Postgres accepts fine even though the generator
-// doesn't reflect it in the TS type.
+// of the SQL function's parameters have a DEFAULT -- but p_gpa is genuinely
+// optional at the app layer and gets passed through as an explicit SQL null,
+// which Postgres accepts fine even though the generator doesn't reflect it
+// in the TS type. p_phone is required now (see PHONE_PATTERN check below),
+// so it needs no such override.
 export type SubmitApplicationArgs = Omit<
   Database["public"]["Functions"]["submit_application"]["Args"],
-  "p_phone" | "p_gpa"
+  "p_gpa"
 > & {
-  p_phone: string | null;
   p_gpa: number | null;
 };
 
@@ -145,21 +145,21 @@ export function buildApplicationInsertPayload(input: ApplicationSubmissionInput)
   if (!lastName) throw new ApplicationValidationError("Last name is required.");
   if (!EMAIL_PATTERN.test(email)) throw new ApplicationValidationError("A valid email is required.");
   if (!EMAIL_PATTERN.test(schoolEmail)) throw new ApplicationValidationError("A valid school email is required.");
-  if (!school) throw new ApplicationValidationError("School is required.");
   if (!major) throw new ApplicationValidationError("Major is required.");
   if (!yearOfStudy) throw new ApplicationValidationError("Year of study is required.");
 
-  // Only checked for one of the fixed schools -- a free-typed "Other" school
-  // has no known domain to validate against, so it just needs a valid email
-  // shape (already checked above).
+  // No free-typed "Other" school anymore -- school must be one of the fixed
+  // SCHOOLS list, so it always has a known domain to validate against below.
+  if (!SCHOOLS.includes(school)) {
+    throw new ApplicationValidationError("Please select a valid school.");
+  }
+
   const allowedSchoolEmailDomains = SCHOOL_EMAIL_DOMAINS[school];
-  if (allowedSchoolEmailDomains) {
-    const schoolEmailDomain = schoolEmail.split("@")[1] ?? "";
-    if (!allowedSchoolEmailDomains.includes(schoolEmailDomain)) {
-      throw new ApplicationValidationError(
-        `School email must be a ${school} address (e.g. name@${allowedSchoolEmailDomains[0]}).`
-      );
-    }
+  const schoolEmailDomain = schoolEmail.split("@")[1] ?? "";
+  if (!allowedSchoolEmailDomains.includes(schoolEmailDomain)) {
+    throw new ApplicationValidationError(
+      `School email must be a ${school} address (e.g. name@${allowedSchoolEmailDomains[0]}).`
+    );
   }
 
   const resume = input.documents.find((doc) => doc.documentType === "resume");
@@ -171,9 +171,21 @@ export function buildApplicationInsertPayload(input: ApplicationSubmissionInput)
     throw new ApplicationValidationError("GPA must be a number between 0 and 4.");
   }
 
-  const phone = input.phone?.trim() || undefined;
-  if (phone && !PHONE_PATTERN.test(phone)) {
+  const phone = input.phone.trim();
+  if (!phone) throw new ApplicationValidationError("Phone number is required.");
+  if (!PHONE_PATTERN.test(phone)) {
     throw new ApplicationValidationError("Please enter a valid phone number.");
+  }
+
+  if (input.teamPreferences.length !== 3) {
+    throw new ApplicationValidationError("Please select 3 team preferences.");
+  }
+  const teamNames = input.teamPreferences.map((pref) => pref.teamName);
+  if (new Set(teamNames).size !== teamNames.length) {
+    throw new ApplicationValidationError("Team preferences must be 3 distinct teams.");
+  }
+  if (teamNames.some((teamName) => !TEAMS.includes(teamName as (typeof TEAMS)[number]))) {
+    throw new ApplicationValidationError("Invalid team selection.");
   }
 
   return {
@@ -182,7 +194,7 @@ export function buildApplicationInsertPayload(input: ApplicationSubmissionInput)
     p_first_name: firstName,
     p_last_name: lastName,
     p_email: email,
-    p_phone: phone ?? null,
+    p_phone: phone,
     p_school_email: schoolEmail,
     p_school: school,
     p_major: major,

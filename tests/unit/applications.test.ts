@@ -18,6 +18,7 @@ const baseInput = {
   firstName: "Ada",
   lastName: "Lovelace",
   email: "ada@example.com",
+  phone: "8035550100",
   schoolEmail: "ada@email.sc.edu",
   school: "University of South Carolina, Columbia",
   major: "Computer Science",
@@ -26,7 +27,11 @@ const baseInput = {
     { documentType: "resume" as const, fileName: "resume.pdf", storagePath: "applications/1/resume-resume.pdf" },
     { documentType: "transcript" as const, fileName: "transcript.pdf", storagePath: "applications/1/transcript-transcript.pdf" },
   ],
-  teamPreferences: [{ teamName: "Programming", rank: 1 }],
+  teamPreferences: [
+    { teamName: "Nonprofit Finances and Legal", rank: 1 },
+    { teamName: "Technology and Web Development", rank: 2 },
+    { teamName: "6a. Production", rank: 3 },
+  ],
   screeningAnswers: [{ question: "Why join?", answer: "Because." }],
 };
 
@@ -162,10 +167,15 @@ describe("buildApplicationInsertPayload", () => {
     expect(payload.p_email).toBe("ada.lovelace@example.com");
   });
 
-  it("defaults phone and gpa to null when omitted", () => {
+  it("defaults gpa to null when omitted", () => {
     const payload = buildApplicationInsertPayload(baseInput);
-    expect(payload.p_phone).toBeNull();
     expect(payload.p_gpa).toBeNull();
+  });
+
+  it("throws ApplicationValidationError when phone is missing", () => {
+    expect(() => buildApplicationInsertPayload({ ...baseInput, phone: "" })).toThrow(
+      ApplicationValidationError
+    );
   });
 
   it("passes through gpa when provided", () => {
@@ -227,13 +237,57 @@ describe("buildApplicationInsertPayload", () => {
     ).toThrow(ApplicationValidationError);
   });
 
-  it("accepts any valid email for a school not in the known domain list", () => {
+  it("throws ApplicationValidationError when school is not one of the fixed allowed colleges", () => {
+    expect(() =>
+      buildApplicationInsertPayload({ ...baseInput, school: "Trident Technical College" })
+    ).toThrow(ApplicationValidationError);
+  });
+
+  it("throws ApplicationValidationError when fewer than 3 team preferences are given", () => {
+    expect(() =>
+      buildApplicationInsertPayload({
+        ...baseInput,
+        teamPreferences: [{ teamName: "Nonprofit Finances and Legal", rank: 1 }],
+      })
+    ).toThrow(ApplicationValidationError);
+  });
+
+  it("throws ApplicationValidationError when a team preference is duplicated", () => {
+    expect(() =>
+      buildApplicationInsertPayload({
+        ...baseInput,
+        teamPreferences: [
+          { teamName: "Nonprofit Finances and Legal", rank: 1 },
+          { teamName: "Nonprofit Finances and Legal", rank: 2 },
+          { teamName: "6a. Production", rank: 3 },
+        ],
+      })
+    ).toThrow(ApplicationValidationError);
+  });
+
+  it("throws ApplicationValidationError on an invalid team name", () => {
+    expect(() =>
+      buildApplicationInsertPayload({
+        ...baseInput,
+        teamPreferences: [
+          { teamName: "Nonprofit Finances and Legal", rank: 1 },
+          { teamName: "Technology and Web Development", rank: 2 },
+          { teamName: "Logistics and Operations / AV Production", rank: 3 },
+        ],
+      })
+    ).toThrow(ApplicationValidationError);
+  });
+
+  it("accepts a team 6 sub-track (6a or 6b) as a valid team preference", () => {
     const payload = buildApplicationInsertPayload({
       ...baseInput,
-      school: "Trident Technical College",
-      schoolEmail: "ada@gmail.com",
+      teamPreferences: [
+        { teamName: "Nonprofit Finances and Legal", rank: 1 },
+        { teamName: "6b. Logistics & Operations", rank: 2 },
+        { teamName: "6a. Production", rank: 3 },
+      ],
     });
-    expect(payload.p_school_email).toBe("ada@gmail.com");
+    expect(payload.p_team_preferences.map((pref) => pref.teamName)).toContain("6b. Logistics & Operations");
   });
 });
 

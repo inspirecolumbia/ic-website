@@ -98,18 +98,22 @@ function RadioWithOther({
   name,
   options,
   otherPlaceholder,
+  allowOther = true,
 }: {
   name: string;
   options: string[];
   otherPlaceholder: string;
+  allowOther?: boolean;
 }) {
   const [choice, setChoice] = useState("");
   const [otherValue, setOtherValue] = useState("");
 
+  const renderedOptions = allowOther ? [...options, "Other"] : options;
+
   return (
     <div>
       <RadioGroup value={choice} onValueChange={(v) => setChoice(v as string)} className="flex flex-col gap-2">
-        {[...options, "Other"].map((option) => (
+        {renderedOptions.map((option) => (
           <label
             key={option}
             htmlFor={`${name}-${option}`}
@@ -238,11 +242,12 @@ export default function JobApplicationForm({
               </div>
 
               <div>
-                <Label htmlFor="phone">Phone number (optional)</Label>
+                <Label htmlFor="phone">Phone number *</Label>
                 <Input
                   id="phone"
                   name="phone"
                   type="tel"
+                  required
                   placeholder="(803) 555-0100"
                   className={fieldClassName}
                 />
@@ -254,7 +259,7 @@ export default function JobApplicationForm({
                 <div>
                   <Label>School *</Label>
                   <div className="mt-2">
-                    <RadioWithOther name="school" options={SCHOOLS} otherPlaceholder="Enter your school" />
+                    <RadioWithOther name="school" options={SCHOOLS} otherPlaceholder="Enter your school" allowOther={false} />
                   </div>
                 </div>
                 <div>

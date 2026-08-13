@@ -72,7 +72,7 @@ export async function submitApplication(
       firstName: formData.get("first_name") as string,
       lastName: formData.get("last_name") as string,
       email: formData.get("email") as string,
-      phone: (formData.get("phone") as string) || undefined,
+      phone: (formData.get("phone") as string | null) ?? "",
       schoolEmail: formData.get("school_email") as string,
       school: formData.get("school") as string,
       major: formData.get("major") as string,
@@ -91,10 +91,10 @@ export async function submitApplication(
     });
 
     // The generated Args type marks every param non-null since none of the
-    // SQL function's parameters have a DEFAULT -- p_phone/p_gpa are
-    // genuinely nullable at runtime (see SubmitApplicationArgs in
-    // lib/applications.ts), Postgres accepts the explicit null fine even
-    // though the type generator doesn't reflect it.
+    // SQL function's parameters have a DEFAULT -- p_gpa is genuinely
+    // nullable at runtime (see SubmitApplicationArgs in lib/applications.ts),
+    // Postgres accepts the explicit null fine even though the type
+    // generator doesn't reflect it.
     const { error } = await supabase.rpc(
       "submit_application",
       payload as Database["public"]["Functions"]["submit_application"]["Args"]
