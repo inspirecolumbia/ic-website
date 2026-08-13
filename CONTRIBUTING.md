@@ -36,17 +36,19 @@ Two things beyond those four variables, only needed for certain kinds of work:
 
 ```mermaid
 flowchart LR
-    A[Your feature branch] -->|PR, CI must pass| B[dev]
-    B -->|PR, CI + 1 tech-leads approval| C[main, production]
+    A[Your feature branch] -->|PR, CI must pass, squash| B[dev]
+    B -->|PR, CI + 1 tech-leads approval, merge| C[main, production]
+    C -.->|sync-back PR, merge| B
     B -.->|auto on merge| D[(dev Supabase)]
     C -.->|auto on merge, after a separate approval| E[(prod Supabase)]
 ```
 
 - `dev` is the default branch. Branch off `dev` for your work, not `main`.
 - Open a PR into `dev`. It needs to pass CI (build, typecheck, lint, unit tests) before it can merge, but doesn't need anyone's approval.
-- PRs into `dev` are squash merged, so don't worry about keeping your commit history clean as you work.
-- Once your change is on `dev`, it gets promoted to production (`main`) periodically by a `tech-leads` member, via a separate PR that does require an approval.
+- PRs into `dev` are squash merged (the default button), so don't worry about keeping your commit history clean as you work.
+- Once your change is on `dev`, it gets promoted to production (`main`) periodically by a `tech-leads` member, via a separate PR that does require an approval. `main`'s merge button only offers a real merge commit, not squash, so each promoted feature stays visible as its own commit.
 - Direct pushes to either `dev` or `main` are blocked for everyone, including admins. Everything goes through a PR.
+- **After a promotion, sync `main` back into `dev`**: open one more PR (`main` as head, `dev` as base) and merge it using the **merge** method, not the default squash button. This keeps the two branches' git history aligned. Skipping this, or squashing it by mistake, doesn't break anything, but leaves a permanent, confusing gap between the branches that has to be fixed the same way later.
 
 ## Common commands
 
