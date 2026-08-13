@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { availableTeams, SCREENING_QUESTIONS, TEAMS } from "@/lib/screening";
+import { availableTeams, SCREENING_QUESTIONS, TEAM_PICKER_OPTIONS, TEAMS } from "@/lib/screening";
 
 describe("TEAMS", () => {
   it("has exactly 7 unique entries", () => {
@@ -27,19 +27,29 @@ describe("SCREENING_QUESTIONS", () => {
   });
 });
 
+describe("TEAM_PICKER_OPTIONS", () => {
+  it("has exactly 6 unique entries, standing in for team 6's two sub-tracks with one parent title", () => {
+    expect(TEAM_PICKER_OPTIONS).toHaveLength(6);
+    expect(new Set(TEAM_PICKER_OPTIONS).size).toBe(6);
+    expect(TEAM_PICKER_OPTIONS).toContain("Logistics and Operations / AV Production");
+    expect(TEAM_PICKER_OPTIONS).not.toContain("6a. Production");
+    expect(TEAM_PICKER_OPTIONS).not.toContain("6b. Logistics & Operations");
+  });
+});
+
 describe("availableTeams", () => {
-  it("returns all 7 teams when nothing is picked", () => {
-    expect(availableTeams([])).toHaveLength(7);
+  it("returns all 6 picker options when nothing is picked", () => {
+    expect(availableTeams([])).toHaveLength(6);
   });
 
   it("excludes already-picked teams", () => {
-    const result = availableTeams(["Nonprofit Finances and Legal", "6a. Production"]);
-    expect(result).toHaveLength(5);
+    const result = availableTeams(["Nonprofit Finances and Legal", "Logistics and Operations / AV Production"]);
+    expect(result).toHaveLength(4);
     expect(result).not.toContain("Nonprofit Finances and Legal");
-    expect(result).not.toContain("6a. Production");
+    expect(result).not.toContain("Logistics and Operations / AV Production");
   });
 
   it("ignores null/undefined entries in the picked list", () => {
-    expect(availableTeams([null, undefined, "6a. Production"])).toHaveLength(6);
+    expect(availableTeams([null, undefined, "Logistics and Operations / AV Production"])).toHaveLength(5);
   });
 });

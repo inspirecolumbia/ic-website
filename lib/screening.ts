@@ -25,6 +25,20 @@ export type Team = (typeof TEAMS)[number];
 export const TEAM_6_PARENT_TITLE = "Logistics and Operations / AV Production";
 export const TEAM_6_SUB_TRACKS: readonly Team[] = ["6a. Production", "6b. Logistics & Operations"];
 
+// The 6 choices shown in the 3 team-ranking dropdowns -- TEAM_6_PARENT_TITLE
+// stands in for its two sub-tracks at picker level, since an applicant picks
+// "Logistics and Operations / AV Production" once, then resolves it to 6a or
+// 6b in a separate required control. Never submit TEAM_6_PARENT_TITLE itself
+// as a team preference -- only TEAMS entries are valid to store.
+export const TEAM_PICKER_OPTIONS = [
+  "Nonprofit Finances and Legal",
+  "Technology and Web Development",
+  "Marketing and Press Strategy",
+  "Sponsorships and Corporate Partnerships",
+  "Speaker Curation and Mentorship",
+  TEAM_6_PARENT_TITLE,
+] as const;
+
 // Object, not a flat string array, so the form can render yes/no vs.
 // free-text differently without string-matching on question text.
 export const SCREENING_QUESTIONS = {
@@ -92,6 +106,10 @@ export const YEAR_OF_STUDY_OPTIONS = [
 // Pure function backing the 3 team-ranking dropdowns' live exclusion of
 // already-picked teams (each dropdown's option list narrows as prior ones
 // are chosen) -- kept standalone so it's unit-testable without React.
+// Operates on TEAM_PICKER_OPTIONS (picker-level choices), not TEAMS
+// (storable values), since a dropdown item is "Logistics and Operations /
+// AV Production", never a bare "6a. Production" or "6b. Logistics &
+// Operations".
 export function availableTeams(picked: (string | null | undefined)[]): string[] {
-  return TEAMS.filter((team) => !picked.includes(team));
+  return TEAM_PICKER_OPTIONS.filter((team) => !picked.includes(team));
 }
