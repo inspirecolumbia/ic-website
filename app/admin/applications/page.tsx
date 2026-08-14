@@ -14,7 +14,7 @@ export default async function ApplicationsPage() {
   if (!canView) {
     return (
       <div>
-        <AdminTabs />
+        <AdminTabs role={role} />
         <h1 className="mb-2 text-xl font-semibold [font-family:var(--font-serif)]">Applications</h1>
         <p className="text-sm text-[var(--admin-text-muted)]">
           Only staff and admins can view applications.
@@ -41,7 +41,7 @@ export default async function ApplicationsPage() {
 
   return (
     <div>
-      <AdminTabs />
+      <AdminTabs role={role} />
       <h1 className="mb-6 text-xl font-semibold [font-family:var(--font-serif)]">Applications</h1>
       <ApplicationsManager rows={rows} jobs={jobs ?? []} fetchCap={APPLICATIONS_FETCH_CAP} />
     </div>

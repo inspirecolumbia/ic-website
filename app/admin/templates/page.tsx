@@ -15,7 +15,7 @@ export default async function TemplatesPage() {
 
   return (
     <div>
-      <AdminTabs />
+      <AdminTabs role={role} />
       <h1 className="mb-2 text-xl font-semibold [font-family:var(--font-serif)]">
         Application templates
       </h1>

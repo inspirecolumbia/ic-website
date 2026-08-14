@@ -16,7 +16,7 @@ export default async function AdminJobsPage() {
 
   return (
     <div>
-      <AdminTabs />
+      <AdminTabs role={role} />
       <JobsManager initialJobs={jobs ?? []} templates={templates ?? []} canWrite={canWrite} />
     </div>
   );

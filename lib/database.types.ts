@@ -75,24 +75,33 @@ export type Database = {
           author_clerk_user_id: string
           author_role: string | null
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           note: string
+          updated_at: string
         }
         Insert: {
           application_id: string
           author_clerk_user_id: string
           author_role?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           note: string
+          updated_at?: string
         }
         Update: {
           application_id?: string
           author_clerk_user_id?: string
           author_role?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           note?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -429,6 +438,20 @@ export type Database = {
         Args: { p_filters?: Json; p_ids: string[]; p_scope: string }
         Returns: number
       }
+      delete_reviewer_note: { Args: { p_note_id: string }; Returns: undefined }
+      list_reviewer_notes: {
+        Args: { p_application_id: string }
+        Returns: {
+          application_id: string
+          author_clerk_user_id: string
+          created_at: string
+          deleted_at: string
+          id: string
+          is_deleted: boolean
+          note: string
+          updated_at: string
+        }[]
+      }
       submit_application: {
         Args: {
           p_application_id: string
@@ -447,6 +470,10 @@ export type Database = {
           p_year_of_study: string
         }
         Returns: string
+      }
+      update_reviewer_note: {
+        Args: { p_note: string; p_note_id: string }
+        Returns: undefined
       }
     }
     Enums: {

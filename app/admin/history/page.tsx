@@ -40,7 +40,7 @@ export default async function HistoryPage() {
 
   return (
     <div>
-      <AdminTabs />
+      <AdminTabs role={role} />
       <h1 className="mb-6 text-xl font-semibold [font-family:var(--font-serif)]">History</h1>
       <HistoryTable rows={rows} isAdmin={isAdmin} />
     </div>
