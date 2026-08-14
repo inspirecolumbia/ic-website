@@ -287,7 +287,8 @@ describe("buildApplicationInsertPayload", () => {
         { teamName: "Production", rank: 3 },
       ],
     });
-    expect(payload.p_team_preferences.map((pref) => pref.teamName)).toContain("Logistics & Operations");
+    const teamPreferences = payload.p_team_preferences as { teamName: string; rank: number }[];
+    expect(teamPreferences.map((pref) => pref.teamName)).toContain("Logistics & Operations");
   });
 });
 
