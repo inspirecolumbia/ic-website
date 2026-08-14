@@ -101,7 +101,7 @@ describe("applications RLS", () => {
       const appId = await seedApplication(client, jobId);
       await impersonate(client, asAnon());
       await expect(
-        client.query("update public.applications set reviewer_notes = 'x' where id = $1", [appId])
+        client.query("update public.applications set status = 'under_review' where id = $1", [appId])
       ).rejects.toThrow(/permission denied/i);
     });
   });
@@ -148,16 +148,13 @@ describe("applications RLS", () => {
     });
   });
 
-  it("staff can update status and reviewer_notes", async () => {
+  it("staff can update status", async () => {
     await withTransaction(async (client) => {
       const jobId = await seedJob(client, "published");
       const appId = await seedApplication(client, jobId);
       await impersonate(client, asStaff());
       await expect(
         client.query("update public.applications set status = 'under_review' where id = $1", [appId])
-      ).resolves.toBeDefined();
-      await expect(
-        client.query("update public.applications set reviewer_notes = 'looks good' where id = $1", [appId])
       ).resolves.toBeDefined();
     });
   });

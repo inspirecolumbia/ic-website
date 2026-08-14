@@ -38,6 +38,7 @@ import { actionLabels, formatDateTime } from "@/lib/history";
 export type HistoryRow = {
   id: string;
   createdAt: string;
+  recordType: "job" | "application";
   jobId: string;
   jobTitle: string;
   action: string;
@@ -45,6 +46,11 @@ export type HistoryRow = {
   actorRole: string;
   oldData: Record<string, unknown> | null;
   newData: Record<string, unknown> | null;
+};
+
+const recordTypeLabel: Record<HistoryRow["recordType"], string> = {
+  job: "Job posting",
+  application: "Application",
 };
 
 type SortColumn = "createdAt" | "jobTitle" | "action" | "actorName" | "actorRole";
@@ -459,6 +465,7 @@ export default function HistoryTable({ rows, isAdmin }: { rows: HistoryRow[]; is
                 </TableHead>
               )}
               <SortableHead column="createdAt" label="When" sort={sort} onSort={handleSort} />
+              <TableHead>Record</TableHead>
               <SortableHead column="jobTitle" label="Job" sort={sort} onSort={handleSort} />
               <SortableHead column="action" label="Change" sort={sort} onSort={handleSort} />
               <SortableHead column="actorName" label="By" sort={sort} onSort={handleSort} />
@@ -497,6 +504,9 @@ export default function HistoryTable({ rows, isAdmin }: { rows: HistoryRow[]; is
                   </TableCell>
                 )}
                 <TableCell>{formatDateTime(row.createdAt)}</TableCell>
+                <TableCell className="text-xs text-[var(--admin-text-muted)]">
+                  {recordTypeLabel[row.recordType]}
+                </TableCell>
                 <TableCell className="max-w-[220px] truncate" title={`${row.jobTitle} (${row.jobId})`}>
                   {row.jobTitle}
                 </TableCell>

@@ -1,32 +1,12 @@
 -- Standing rule: no production applicant data may ever be sourced into this
--- file, or into any dev/branch database. The row below is already public,
--- non-sensitive job-posting content (mirrors data/jobs.json), not PII.
-
-insert into public.jobs (
-  slug, title, role, location, commitment_type, description,
-  responsibilities, qualifications, apply_url, status, posting_date, published_at
-) values (
-  'associate-2026',
-  'Associate',
-  '2026 Associate Program',
-  'Columbia, SC',
-  'Part-time, semester-long',
-  'Inspire Columbia''s Associate Program pairs college students from Columbia-area schools with a hands-on nonprofit team for a semester, working directly on the events and programming that reach the community.',
-  array[
-    'Join one of six IC teams and contribute to real deliverables each week',
-    'Attend weekly team meetings and periodic all-associate trainings',
-    'Support the planning and execution of at least one IC event during the semester',
-    'Collaborate with Lead Organizers and C-Suite staff on your team''s projects'
-  ],
-  array[
-    'Currently enrolled at a Columbia-area college or university',
-    'Live in or near Columbia, SC',
-    'Authorized to work for a US nonprofit',
-    'Reliable availability for weekly team commitments'
-  ],
-  'https://forms.gle/CF5wu5vbbgYotFQf9',
-  'published',
-  '2026-07-01',
-  now()
-)
-on conflict (slug) do nothing;
+-- file, or into any dev/branch database.
+--
+-- Intentionally empty. The associate-2026 posting this used to insert is
+-- already seeded by supabase/migrations/20260802231618_seed_associate_2026_job.sql
+-- (same slug, on conflict do nothing), which runs through the real reviewed
+-- migration path and reaches production too. This file used to duplicate
+-- that insert, but drifted out of sync with the jobs table's columns after
+-- 20260810120000_jobs_merge_description_fields.sql dropped
+-- responsibilities/qualifications, breaking `supabase db reset` for anyone
+-- running it fresh. Don't re-add job-posting inserts here -- add them as a
+-- migration instead, same as that one did.

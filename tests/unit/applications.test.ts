@@ -50,7 +50,6 @@ describe("applicationRowToApplication", () => {
       year_of_study: "Junior",
       gpa: 3.9,
       status: "under_review",
-      reviewer_notes: "Strong candidate",
       created_at: "2026-08-05T00:00:00.000Z",
       updated_at: "2026-08-05T00:00:00.000Z",
     };
@@ -68,7 +67,6 @@ describe("applicationRowToApplication", () => {
       yearOfStudy: "Junior",
       gpa: 3.9,
       status: "under_review",
-      reviewerNotes: "Strong candidate",
       createdAt: "2026-08-05T00:00:00.000Z",
     });
   });

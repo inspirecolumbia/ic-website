@@ -17,7 +17,6 @@ export type Application = {
   yearOfStudy: string | null;
   gpa: number | null;
   status: ApplicationStatus;
-  reviewerNotes: string | null;
   createdAt: string;
 };
 
@@ -35,7 +34,6 @@ export function applicationRowToApplication(row: ApplicationRow): Application {
     yearOfStudy: row.year_of_study,
     gpa: row.gpa,
     status: row.status,
-    reviewerNotes: row.reviewer_notes,
     createdAt: row.created_at,
   };
 }

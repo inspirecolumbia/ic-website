@@ -8,13 +8,14 @@ export default async function AdminDashboardPage() {
   const supabase = createClerkSupabaseClient();
 
   const [{ data: jobs }, { data: recentChanges }] = await Promise.all([
-    supabase.from("jobs").select("id, status, posting_date, closing_date"),
+    supabase.from("jobs").select("id, title, status, posting_date, closing_date"),
     supabase
       .from("audit_log")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(5),
   ]);
+  const jobTitleByJobId = new Map((jobs ?? []).map((job) => [job.id, job.title]));
 
   const counts = { draft: 0, published: 0, scheduled: 0, closedOrArchived: 0 };
   for (const job of jobs ?? []) {
@@ -85,7 +86,7 @@ export default async function AdminDashboardPage() {
                     className="flex items-center justify-between gap-2 rounded-md p-1 -m-1 text-inherit no-underline outline-none hover:bg-[var(--admin-surface-hover)] focus-visible:ring-2 focus-visible:ring-[var(--admin-brand)]"
                   >
                     <span className="truncate text-[var(--admin-text)]">
-                      {actionLabels[entry.action] ?? entry.action} {resolveJobTitle(entry)}
+                      {actionLabels[entry.action] ?? entry.action} {resolveJobTitle(entry, jobTitleByJobId)}
                     </span>
                     <span className="flex shrink-0 flex-col items-end text-xs text-[var(--admin-text-muted)]">
                       <span>{resolveActorName(entry.actor_clerk_user_id, actorNames)}</span>

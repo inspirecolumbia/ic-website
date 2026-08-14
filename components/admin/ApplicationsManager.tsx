@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ChevronUp, ChevronDown, ArrowUpDown, X } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ChevronUp, ChevronDown, ArrowUpDown, FileSpreadsheet, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -87,8 +87,13 @@ export default function ApplicationsManager({
   fetchCap: number;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
-  const [jobFilter, setJobFilter] = useState<string>("all");
+  // Seeded from ?job=<id> so a click-through from the Jobs tab (see
+  // JobsManager.tsx) lands here pre-filtered to that job -- an invalid or
+  // stale id just filters down to zero rows rather than erroring, same as
+  // a manually-typed URL would.
+  const [jobFilter, setJobFilter] = useState<string>(() => searchParams.get("job") ?? "all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sort, setSort] = useState<Sort>({ column: "createdAt", direction: "desc" });
   const [page, setPage] = useState(1);
@@ -202,10 +207,11 @@ export default function ApplicationsManager({
           </Button>
         )}
         <Link
-          href="/admin/applications/export"
-          className="ml-auto text-sm text-[var(--admin-brand)] underline-offset-2 hover:underline"
+          href={jobFilter === "all" ? "/admin/applications/export" : `/admin/applications/export?job=${jobFilter}`}
+          className="ml-auto inline-flex items-center gap-1.5 text-sm text-[var(--admin-brand)] underline-offset-2 hover:underline"
         >
-          Export .xlsx
+          <FileSpreadsheet className="size-4" />
+          {jobFilter === "all" ? "Export .xlsx" : "Export .xlsx (this job)"}
         </Link>
       </div>
 

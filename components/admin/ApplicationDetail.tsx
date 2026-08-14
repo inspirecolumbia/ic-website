@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
-import { getApplicationDocumentUrl, updateApplicationNotes, updateApplicationStatus } from "@/app/admin/actions";
+import { addApplicationReviewerNote, getApplicationDocumentUrl, updateApplicationStatus } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -21,6 +21,14 @@ type TeamPreference = Database["public"]["Tables"]["application_team_preferences
 type ScreeningAnswer = Database["public"]["Tables"]["application_screening_answers"]["Row"];
 type StatusHistoryEntry = Database["public"]["Tables"]["application_status_history"]["Row"];
 
+export type ReviewerNoteEntry = {
+  id: string;
+  note: string;
+  createdAt: string;
+  authorName: string;
+  authorRole: string | null;
+};
+
 const statusBadgeClass: Record<string, string> = {
   submitted: "bg-[var(--admin-neutral-soft)] text-[var(--admin-text-muted)]",
   under_review: "bg-[var(--admin-brand-soft)] text-[var(--admin-brand)]",
@@ -35,14 +43,17 @@ function documentLabel(documentType: string) {
   return documentType === "resume" ? "Resume" : documentType === "transcript" ? "Transcript" : documentType;
 }
 
-function DownloadButton({ document }: { document: ApplicationDocument }) {
-  const [pending, startTransition] = useTransition();
+function DocumentActions({ document }: { document: ApplicationDocument }) {
+  const [pendingMode, setPendingMode] = useState<"preview" | "download" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
 
-  function handleClick() {
+  function handleClick(mode: "preview" | "download") {
     setError(null);
+    setPendingMode(mode);
     startTransition(() => {
-      getApplicationDocumentUrl(document.id).then((result) => {
+      getApplicationDocumentUrl(document.id, mode).then((result) => {
+        setPendingMode(null);
         if ("error" in result) {
           setError(result.error);
           return;
@@ -50,6 +61,9 @@ function DownloadButton({ document }: { document: ApplicationDocument }) {
         // window.open() after this await would hit the popup blocker since
         // it's no longer inside the click's call stack -- navigating the
         // current tab avoids that without needing a pre-opened blank tab.
+        // Preview relies on Storage's default inline response headers;
+        // download forces Content-Disposition: attachment via the signed
+        // URL's download param (see createApplicationDocumentSignedUrl).
         window.location.href = result.url;
       });
     });
@@ -57,9 +71,26 @@ function DownloadButton({ document }: { document: ApplicationDocument }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <Button type="button" variant="outline" size="sm" disabled={pending} onClick={handleClick}>
-        {pending ? "Preparing..." : `Download ${documentLabel(document.document_type)}`}
-      </Button>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={pendingMode !== null}
+          onClick={() => handleClick("preview")}
+        >
+          {pendingMode === "preview" ? "Preparing..." : `Preview ${documentLabel(document.document_type)}`}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={pendingMode !== null}
+          onClick={() => handleClick("download")}
+        >
+          {pendingMode === "download" ? "Preparing..." : "Download"}
+        </Button>
+      </div>
       {error && <p className="text-xs text-[var(--admin-danger)]">{error}</p>}
     </div>
   );
@@ -68,24 +99,28 @@ function DownloadButton({ document }: { document: ApplicationDocument }) {
 export default function ApplicationDetail({
   application,
   jobTitle,
+  jobRole,
   documents,
   teamPreferences,
   screeningAnswers,
   statusHistory,
+  reviewerNotes,
 }: {
   application: Application;
   jobTitle: string;
+  jobRole: string | null;
   documents: ApplicationDocument[];
   teamPreferences: TeamPreference[];
   screeningAnswers: ScreeningAnswer[];
   statusHistory: StatusHistoryEntry[];
+  reviewerNotes: ReviewerNoteEntry[];
 }) {
   const [status, setStatus] = useState(application.status);
-  const [notes, setNotes] = useState(application.reviewerNotes ?? "");
+  const [newNote, setNewNote] = useState("");
   const [statusPending, startStatusTransition] = useTransition();
-  const [notesPending, startNotesTransition] = useTransition();
+  const [notePending, startNoteTransition] = useTransition();
   const [statusError, setStatusError] = useState<string | null>(null);
-  const [notesError, setNotesError] = useState<string | null>(null);
+  const [noteError, setNoteError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -107,14 +142,15 @@ export default function ApplicationDetail({
     });
   }
 
-  function saveNotes() {
-    setNotesError(null);
-    startNotesTransition(() => {
-      updateApplicationNotes(application.id, notes).then((result) => {
+  function postNote() {
+    setNoteError(null);
+    startNoteTransition(() => {
+      addApplicationReviewerNote(application.id, newNote).then((result) => {
         if (result && "error" in result) {
-          setNotesError(result.error);
+          setNoteError(result.error);
         } else {
-          setSuccessMessage("Notes saved.");
+          setNewNote("");
+          setSuccessMessage("Note posted.");
         }
       });
     });
@@ -161,6 +197,10 @@ export default function ApplicationDetail({
               <dd className="text-sm text-[var(--admin-text)]">{jobTitle}</dd>
             </div>
             <div>
+              <dt className="text-xs text-[var(--admin-text-muted)]">Role</dt>
+              <dd className="text-sm text-[var(--admin-text)]">{jobRole ?? "—"}</dd>
+            </div>
+            <div>
               <dt className="text-xs text-[var(--admin-text-muted)]">Submitted</dt>
               <dd className="text-sm text-[var(--admin-text)]">{formatDateTime(application.createdAt)}</dd>
             </div>
@@ -202,7 +242,7 @@ export default function ApplicationDetail({
           ) : (
             <div className="flex flex-col gap-2">
               {documents.map((doc) => (
-                <DownloadButton key={doc.id} document={doc} />
+                <DocumentActions key={doc.id} document={doc} />
               ))}
             </div>
           )}
@@ -283,22 +323,44 @@ export default function ApplicationDetail({
 
         <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 md:col-span-2">
           <h2 className="mb-3 text-base font-medium text-[var(--admin-text)]">Reviewer notes</h2>
+          <p className="mb-3 text-xs text-[var(--admin-text-muted)]">
+            Internal notes, not visible to the applicant. Each entry is kept as its own post, not
+            overwritten, so multiple staff/admins can weigh in over time.
+          </p>
+
+          {reviewerNotes.length === 0 ? (
+            <p className="mb-3 text-sm text-[var(--admin-text-muted)]">No notes yet.</p>
+          ) : (
+            <ul className="m-0 mb-3 flex list-none flex-col gap-3 p-0">
+              {reviewerNotes.map((entry) => (
+                <li
+                  key={entry.id}
+                  className="rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface-hover)] p-3"
+                >
+                  <div className="mb-1 flex items-center justify-between gap-2 text-xs text-[var(--admin-text-muted)]">
+                    <span className="font-medium text-[var(--admin-text)]">
+                      {entry.authorName}
+                      {entry.authorRole ? ` (${entry.authorRole})` : ""}
+                    </span>
+                    <span>{formatDateTime(entry.createdAt)}</span>
+                  </div>
+                  <p className="m-0 whitespace-pre-wrap text-sm text-[var(--admin-text)]">{entry.note}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+
           <Textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={4}
-            placeholder="Internal notes, not visible to the applicant."
+            value={newNote}
+            onChange={(e) => setNewNote(e.target.value)}
+            rows={3}
+            placeholder="Add a note..."
           />
           <div className="mt-2 flex items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              disabled={notesPending || notes === (application.reviewerNotes ?? "")}
-              onClick={saveNotes}
-            >
-              {notesPending ? "Saving..." : "Save notes"}
+            <Button type="button" size="sm" disabled={notePending || !newNote.trim()} onClick={postNote}>
+              {notePending ? "Posting..." : "Post note"}
             </Button>
-            {notesError && <p className="text-xs text-[var(--admin-danger)]">{notesError}</p>}
+            {noteError && <p className="text-xs text-[var(--admin-danger)]">{noteError}</p>}
           </div>
         </div>
       </div>
