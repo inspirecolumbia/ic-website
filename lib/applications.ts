@@ -54,6 +54,14 @@ export function applicationStatusLabel(status: ApplicationStatus): string {
 
 export const APPLICATION_STATUSES = Object.keys(statusLabels) as ApplicationStatus[];
 
+// Only ever called with small positive ranks (1-3 team preferences), so no
+// need to handle the 11th/12th/13th "always -th" exception a general-
+// purpose ordinal formatter would need.
+export function ordinal(rank: number): string {
+  const suffix = rank === 1 ? "st" : rank === 2 ? "nd" : rank === 3 ? "rd" : "th";
+  return `${rank}${suffix}`;
+}
+
 // The list view joins in the job title in-memory (the applications table
 // only stores job_id), so this is what app/admin/applications/page.tsx
 // hands down to ApplicationsManager instead of a bare Application.
