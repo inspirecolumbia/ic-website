@@ -41,11 +41,13 @@ async function seedApplication(client: Client, jobId: string, overrides: { email
 async function submitViaRpc(client: Client, jobId: string, overrides: { email?: string } = {}) {
   return client.query(
     `select public.submit_application(
-       gen_random_uuid(), $1::uuid, 'Ada', 'Lovelace', $2, null,
-       'ada@school.edu', 'Test University', 'Computer Science', 'Junior', null,
+       gen_random_uuid(), $1::uuid, 'Ada', 'Lovelace', $2, '8035550100',
+       'ada@email.sc.edu', 'University of South Carolina, Columbia', 'Computer Science', 'Junior', null,
        '[{"documentType":"resume","fileName":"r.pdf","storagePath":"applications/x/resume.pdf"},
          {"documentType":"transcript","fileName":"t.pdf","storagePath":"applications/x/transcript.pdf"}]'::jsonb,
-       '[{"teamName":"Production and Operations","rank":1}]'::jsonb,
+       '[{"teamName":"Nonprofit Finances and Legal","rank":1},
+         {"teamName":"Technology and Web Development","rank":2},
+         {"teamName":"Production","rank":3}]'::jsonb,
        '[]'::jsonb
      )`,
     [jobId, overrides.email ?? `ada-${Math.random().toString(36).slice(2)}@example.com`]
