@@ -54,6 +54,13 @@ export function applicationStatusLabel(status: ApplicationStatus): string {
   return statusLabels[status];
 }
 
+export const APPLICATION_STATUSES = Object.keys(statusLabels) as ApplicationStatus[];
+
+// The list view joins in the job title in-memory (the applications table
+// only stores job_id), so this is what app/admin/applications/page.tsx
+// hands down to ApplicationsManager instead of a bare Application.
+export type ApplicationListRow = Application & { jobTitle: string };
+
 export class ApplicationValidationError extends Error {}
 
 // Exported so tests/unit/business-rule-sync.test.ts can assert these stay in

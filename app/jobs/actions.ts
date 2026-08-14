@@ -8,6 +8,12 @@ import {
 } from "@/lib/applications";
 import { ApplicationUploadError, uploadApplicationDocument } from "@/lib/storage";
 import { SCREENING_QUESTIONS } from "@/lib/screening";
+import { sendEmail, sendTemplateEmail } from "@/lib/email/send";
+import {
+  APPLICATION_CONFIRMATION_TEMPLATE_ALIAS,
+  applicationConfirmationTemplateVariables,
+  staffAlertEmail,
+} from "@/lib/email/templates";
 import type { Database } from "@/lib/database.types";
 
 export type ApplicationFormState = { error: string } | { ok: true } | null;
@@ -109,6 +115,32 @@ export async function submitApplication(
       }
       return { error: "Something went wrong submitting your application. Please try again." };
     }
+
+    // Fetched here rather than trusted from a client-submitted hidden field
+    // -- the staff alert email below would otherwise let a crafted request
+    // put attacker-controlled text straight into a real staff inbox.
+    const { data: job } = await supabase.from("jobs").select("title").eq("id", jobId).maybeSingle();
+    const jobTitle = job?.title ?? "a position";
+    const firstName = formData.get("first_name") as string;
+    const lastName = formData.get("last_name") as string;
+    const applicantEmail = formData.get("email") as string;
+    const staffAlertEmailAddress = process.env.STAFF_ALERT_EMAIL;
+
+    // Best-effort: a Resend outage or misconfiguration must never turn a
+    // successful application submission into a user-facing error.
+    await Promise.allSettled([
+      sendTemplateEmail({
+        to: applicantEmail,
+        templateId: APPLICATION_CONFIRMATION_TEMPLATE_ALIAS,
+        variables: applicationConfirmationTemplateVariables(firstName, lastName),
+      }),
+      staffAlertEmailAddress
+        ? sendEmail({
+            to: staffAlertEmailAddress,
+            ...staffAlertEmail(`${firstName} ${lastName}`, jobTitle),
+          })
+        : Promise.resolve(),
+    ]);
 
     return { ok: true };
   } catch (err) {

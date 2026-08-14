@@ -104,6 +104,27 @@ export function jobPhotoPublicUrl(photoPath: string | null): string | null {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${JOB_PHOTOS_BUCKET}/${photoPath}`;
 }
 
+// Staff/admin have a `select` RLS policy on storage.objects for this
+// bucket, which is what createSignedUrl needs to succeed -- an anon or
+// member session gets a policy-denial error here instead of a URL.
+// storage_path is nullable in the DB (a row can exist with an upload that
+// never completed), so callers must handle the null case before calling
+// this rather than relying on it to fail gracefully.
+export async function createApplicationDocumentSignedUrl(
+  supabase: SupabaseClient<Database>,
+  storagePath: string,
+  expiresInSeconds = 60
+): Promise<{ url: string } | { error: string }> {
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(storagePath, expiresInSeconds);
+
+  if (error || !data) {
+    return { error: error?.message ?? "Couldn't generate a download link." };
+  }
+  return { url: data.signedUrl };
+}
+
 export function mapJobPhotoStorageError(message: string): string {
   const lower = message.toLowerCase();
 

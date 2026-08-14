@@ -3,9 +3,17 @@
 import { createClerkSupabaseClient } from "@/lib/supabase/clerk";
 import { revalidatePath } from "next/cache";
 import type { Database } from "@/lib/database.types";
-import { deleteJobPhotoObject, JobPhotoUploadError, uploadJobPhoto } from "@/lib/storage";
+import {
+  createApplicationDocumentSignedUrl,
+  deleteJobPhotoObject,
+  JobPhotoUploadError,
+  uploadJobPhoto,
+} from "@/lib/storage";
+import { sendEmail } from "@/lib/email/send";
+import { statusChangeEmail } from "@/lib/email/templates";
 
 type JobStatus = Database["public"]["Enums"]["job_status"];
+type ApplicationStatus = Database["public"]["Enums"]["application_status"];
 
 // display_order is intentionally not part of the form, ordering is set on
 // the jobs list via drag-and-drop or the up/down buttons (reorderJobs
@@ -367,5 +375,78 @@ export async function transitionStatus(id: string, status: JobStatus): Promise<{
 
   revalidatePath("/admin/jobs");
   revalidatePath("/jobs");
+  return null;
+}
+
+// Trusts the row's own storage_path rather than recomputing it from the
+// application/document-type pair -- looking it up by the document's own id
+// means this works the same way regardless of how that path was derived.
+export async function getApplicationDocumentUrl(
+  applicationDocumentId: string
+): Promise<{ url: string } | { error: string }> {
+  const supabase = createClerkSupabaseClient();
+  const { data, error } = await supabase
+    .from("application_documents")
+    .select("storage_path")
+    .eq("id", applicationDocumentId)
+    .single();
+
+  if (error || !data) return { error: "Document not found." };
+  if (!data.storage_path) return { error: "This document is unavailable." };
+
+  return createApplicationDocumentSignedUrl(supabase, data.storage_path);
+}
+
+export async function updateApplicationStatus(
+  id: string,
+  status: ApplicationStatus
+): Promise<{ error: string } | null> {
+  const supabase = createClerkSupabaseClient();
+
+  // Fetched first so a staff member re-saving the same status never fires a
+  // duplicate notification, and so the notification has the applicant's
+  // name/email/job title without a second round trip after the update.
+  const { data: current } = await supabase
+    .from("applications")
+    .select("status, first_name, email, job_id")
+    .eq("id", id)
+    .single();
+
+  const { error } = await supabase.from("applications").update({ status }).eq("id", id);
+  if (error) return { error: error.message };
+
+  if (current && current.status !== status) {
+    const { data: job } = await supabase.from("jobs").select("title").eq("id", current.job_id).maybeSingle();
+    // Best-effort: a Resend outage must never turn a successful status
+    // update into a user-facing error.
+    try {
+      await sendEmail({
+        to: current.email,
+        ...statusChangeEmail(current.first_name, job?.title ?? "your position", status),
+      });
+    } catch {
+      // Swallowed, see comment above.
+    }
+  }
+
+  revalidatePath("/admin/applications");
+  revalidatePath(`/admin/applications/${id}`);
+  return null;
+}
+
+// Kept separate from updateApplicationStatus so a notes-only save can never
+// accidentally trigger a status-change notification email.
+export async function updateApplicationNotes(
+  id: string,
+  reviewerNotes: string
+): Promise<{ error: string } | null> {
+  const supabase = createClerkSupabaseClient();
+  const { error } = await supabase
+    .from("applications")
+    .update({ reviewer_notes: reviewerNotes })
+    .eq("id", id);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/admin/applications/${id}`);
   return null;
 }
