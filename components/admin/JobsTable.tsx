@@ -276,8 +276,13 @@ function SortableRow({
           </div>
         )}
       </TableCell>
-      <TableCell className="max-w-[240px] truncate" title={job.title}>
-        {job.title}
+      <TableCell className="max-w-[240px] truncate" title={`View applications for ${job.title}`}>
+        <Link
+          href={`/admin/applications?job=${job.id}`}
+          className="text-[var(--admin-text)] underline-offset-2 hover:text-[var(--admin-brand)] hover:underline"
+        >
+          {job.title}
+        </Link>
       </TableCell>
       <TableCell>
         <span className={"rounded-full px-2 py-0.5 text-xs font-medium " + statusBadgeClass[displayStatus]}>

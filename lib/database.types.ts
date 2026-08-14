@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -7,11 +7,6 @@
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.15"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -67,6 +62,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "application_documents_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      application_reviewer_notes: {
+        Row: {
+          application_id: string
+          author_clerk_user_id: string
+          author_role: string | null
+          created_at: string
+          id: string
+          note: string
+        }
+        Insert: {
+          application_id: string
+          author_clerk_user_id: string
+          author_role?: string | null
+          created_at?: string
+          id?: string
+          note: string
+        }
+        Update: {
+          application_id?: string
+          author_clerk_user_id?: string
+          author_role?: string | null
+          created_at?: string
+          id?: string
+          note?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_reviewer_notes_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "applications"
@@ -202,7 +232,6 @@ export type Database = {
           last_name: string
           major: string | null
           phone: string | null
-          reviewer_notes: string | null
           school: string | null
           school_email: string | null
           status: Database["public"]["Enums"]["application_status"]
@@ -219,7 +248,6 @@ export type Database = {
           last_name: string
           major?: string | null
           phone?: string | null
-          reviewer_notes?: string | null
           school?: string | null
           school_email?: string | null
           status?: Database["public"]["Enums"]["application_status"]
@@ -236,7 +264,6 @@ export type Database = {
           last_name?: string
           major?: string | null
           phone?: string | null
-          reviewer_notes?: string | null
           school?: string | null
           school_email?: string | null
           status?: Database["public"]["Enums"]["application_status"]
@@ -575,3 +602,4 @@ export const Constants = {
     },
   },
 } as const
+

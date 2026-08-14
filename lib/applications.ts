@@ -17,7 +17,6 @@ export type Application = {
   yearOfStudy: string | null;
   gpa: number | null;
   status: ApplicationStatus;
-  reviewerNotes: string | null;
   createdAt: string;
 };
 
@@ -35,7 +34,6 @@ export function applicationRowToApplication(row: ApplicationRow): Application {
     yearOfStudy: row.year_of_study,
     gpa: row.gpa,
     status: row.status,
-    reviewerNotes: row.reviewer_notes,
     createdAt: row.created_at,
   };
 }
@@ -53,6 +51,13 @@ const statusLabels: Record<ApplicationStatus, string> = {
 export function applicationStatusLabel(status: ApplicationStatus): string {
   return statusLabels[status];
 }
+
+export const APPLICATION_STATUSES = Object.keys(statusLabels) as ApplicationStatus[];
+
+// The list view joins in the job title in-memory (the applications table
+// only stores job_id), so this is what app/admin/applications/page.tsx
+// hands down to ApplicationsManager instead of a bare Application.
+export type ApplicationListRow = Application & { jobTitle: string };
 
 export class ApplicationValidationError extends Error {}
 
