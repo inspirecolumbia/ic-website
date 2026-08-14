@@ -8,6 +8,8 @@ This is the website for Inspire Columbia, a Next.js app with a Supabase database
   - [Environment setup](#environment-setup)
 - [How to contribute code](#how-to-contribute-code)
 - [Common commands](#common-commands)
+- [Testing](#testing)
+  - [Setting up the local Supabase stack](#setting-up-the-local-supabase-stack)
 - [Database migrations](#database-migrations)
 
 ## Getting started
@@ -66,11 +68,42 @@ Specialized, only relevant if you're touching the database schema:
 
 - `supabase start` / `supabase stop`: starts or stops a local Postgres/Supabase stack, so you can test migrations without touching the shared dev project
 - `npm run test:rls`: database permission tests. Requires that local stack to be running (`supabase start` first). Not run in CI yet.
+- `npm run test:e2e`: Playwright browser tests against a real local Supabase stack. Also requires the local stack running first. Not run in CI yet.
 - `npm run types:gen`: regenerates `lib/database.types.ts` from the schema after a migration change. Run this any time you add a migration. Never hand-edit that file directly.
+
+See [Testing](#testing) below for what each test suite actually covers and how to get the local stack running for the first time.
+
+## Testing
+
+Three separate test suites exist, each with a different job:
+
+- **Unit tests** (`tests/unit/`, `npm run test:unit`) — pure TypeScript logic (validation functions, business-rule constants). No database, no browser. Runs in CI on every PR.
+- **RLS tests** (`tests/rls/`, `npm run test:rls`) — verify Postgres row-level security policies directly (what `anon`/`member`/`staff`/`admin` can and can't read or write), connecting straight to Postgres inside a rolled-back transaction. Needs the local Supabase stack running. Not in CI yet, since that would mean running Docker in CI, a bigger infrastructure decision not made yet.
+- **End-to-end tests** (`tests/e2e/`, `npm run test:e2e`) — Playwright driving a real browser against a real local dev server and real local Supabase stack, covering full user flows (e.g. filling out and submitting the application form) including things that can only be verified against a real backend, like Storage's actual file-type/size enforcement on uploads. Also needs the local stack running. Also not in CI yet, same reason as RLS tests.
+
+Both RLS and e2e tests are safe to run repeatedly against the local stack; they don't touch the shared dev or prod Supabase projects at all.
+
+### Setting up the local Supabase stack
+
+Needed for RLS tests, e2e tests, and for trying out a migration before pushing it anywhere. One-time setup, then reusable across sessions:
+
+1. Make sure Docker Desktop is running. The local stack is a set of Docker containers (Postgres, Storage, etc.), managed by the Supabase CLI.
+2. Run `supabase start` from the repo root. First run downloads several Docker images and takes a few minutes; later runs are fast. It applies every migration in `supabase/migrations/` to a fresh local Postgres database and prints a block of local URLs/keys (Postgres connection string, API URL, Storage URL, etc.) — these are fixed values the CLI always uses for local projects, not secrets, safe to reference directly in code or commands.
+3. To actually test a new migration you just wrote: if the stack was already running from a previous session, `supabase start` alone won't re-run migrations against an existing database. Use `supabase db reset` instead, this drops and recreates the local database and reapplies every migration in order, exactly like a fresh `supabase start` would. Get in the habit of reaching for `db reset` any time you want to confirm a migration actually applies cleanly from scratch, not just `start`.
+4. Run `npm run test:rls` and/or `npm run test:e2e` against it. Both connect to the same fixed local Postgres port (`127.0.0.1:54322`).
+5. `supabase stop` when you're done, or just leave it running, it doesn't interfere with anything else.
+
+A couple of things worth knowing:
+
+- `npm run dev` still points at the **shared dev Supabase project** (per `.env.local`), not the local stack, by default. The local stack is a separate, throwaway database that only your migrations and test runs touch.
+- `npm run test:e2e` runs its own dev server pointed at the local stack (port 3100, with its own `.next-e2e` build cache, see `playwright.config.ts`), specifically so it can run side-by-side with your own `npm run dev` on port 3000 without conflicting.
+- The seeded `associate-2026` job (from `supabase/migrations/20260802231618_seed_associate_2026_job.sql`) still has its original external `apply_url` set on a fresh local stack, real dev/prod have had that cleared by hand in the admin dashboard once the in-house form shipped, but that's an out-of-band change no migration captures. `tests/e2e/global-setup.ts` clears it automatically before the e2e suite runs; do the same by hand (`update jobs set apply_url = null where slug = 'associate-2026';`) if you want to click through the apply form manually against the local stack.
 
 ## Database migrations
 
 Migration files live in `supabase/migrations/`, named `<timestamp>_<description>.sql`. Once a migration has been merged, don't edit that file. The database has already run it and won't run it again, so add a new migration instead.
+
+Test a new migration against the [local Supabase stack](#setting-up-the-local-supabase-stack) (`supabase db reset`, then `npm run test:rls` / `npm run test:e2e` as relevant) before opening a PR. Nothing forces this, but it's the only way to catch a migration that doesn't apply cleanly or breaks an RLS policy before it reaches the shared dev project.
 
 They're applied automatically, not by hand:
 

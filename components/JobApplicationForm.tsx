@@ -59,7 +59,7 @@ function Required() {
 function FormSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <fieldset className="border-t border-[var(--line)] pt-2 first:border-t-0 first:pt-0">
-      <legend className="mb-4 [font-family:var(--font-serif)] text-[1.15rem] font-semibold text-[var(--ink)]">
+      <legend className="mb-4 pr-2.5 [font-family:var(--font-serif)] text-[1.5rem] font-semibold text-[var(--ink)]">
         {title}
       </legend>
       <div className="flex flex-col gap-5">{children}</div>
@@ -368,9 +368,6 @@ export default function JobApplicationForm({
                     onChange={(e) => setSchoolEmail(e.target.value)}
                     className={fieldClassName}
                   />
-                  <p className="mt-1 text-xs text-[var(--ink-muted)]">
-                    Must be your official school-issued email address.
-                  </p>
                 </div>
               </div>
 
