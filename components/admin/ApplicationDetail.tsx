@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
+import { Download } from "lucide-react";
 import { addApplicationReviewerNote, getApplicationDocumentUrl, updateApplicationStatus } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,15 +45,35 @@ function documentLabel(documentType: string) {
 }
 
 function DocumentActions({ document }: { document: ApplicationDocument }) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [pendingMode, setPendingMode] = useState<"preview" | "download" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
-  function handleClick(mode: "preview" | "download") {
+  function togglePreview() {
+    if (previewUrl) {
+      setPreviewUrl(null);
+      return;
+    }
     setError(null);
-    setPendingMode(mode);
+    setPendingMode("preview");
     startTransition(() => {
-      getApplicationDocumentUrl(document.id, mode).then((result) => {
+      getApplicationDocumentUrl(document.id, "preview").then((result) => {
+        setPendingMode(null);
+        if ("error" in result) {
+          setError(result.error);
+          return;
+        }
+        setPreviewUrl(result.url);
+      });
+    });
+  }
+
+  function handleDownload() {
+    setError(null);
+    setPendingMode("download");
+    startTransition(() => {
+      getApplicationDocumentUrl(document.id, "download").then((result) => {
         setPendingMode(null);
         if ("error" in result) {
           setError(result.error);
@@ -61,37 +82,45 @@ function DocumentActions({ document }: { document: ApplicationDocument }) {
         // window.open() after this await would hit the popup blocker since
         // it's no longer inside the click's call stack -- navigating the
         // current tab avoids that without needing a pre-opened blank tab.
-        // Preview relies on Storage's default inline response headers;
-        // download forces Content-Disposition: attachment via the signed
-        // URL's download param (see createApplicationDocumentSignedUrl).
+        // Download forces Content-Disposition: attachment via the signed
+        // URL's download param (see createApplicationDocumentSignedUrl);
+        // the embedded preview below uses a separate, longer-lived signed
+        // URL instead of navigating away at all.
         window.location.href = result.url;
       });
     });
   }
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={pendingMode !== null}
-          onClick={() => handleClick("preview")}
-        >
-          {pendingMode === "preview" ? "Preparing..." : `Preview ${documentLabel(document.document_type)}`}
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <Button type="button" variant="outline" size="sm" disabled={pendingMode !== null} onClick={togglePreview}>
+          {pendingMode === "preview"
+            ? "Loading..."
+            : previewUrl
+              ? `Hide ${documentLabel(document.document_type)}`
+              : `Preview ${documentLabel(document.document_type)}`}
         </Button>
         <Button
           type="button"
           variant="outline"
           size="sm"
           disabled={pendingMode !== null}
-          onClick={() => handleClick("download")}
+          onClick={handleDownload}
+          className="gap-1.5"
         >
+          <Download className="size-3.5" />
           {pendingMode === "download" ? "Preparing..." : "Download"}
         </Button>
       </div>
       {error && <p className="text-xs text-[var(--admin-danger)]">{error}</p>}
+      {previewUrl && (
+        <iframe
+          src={previewUrl}
+          title={`${documentLabel(document.document_type)} preview`}
+          className="h-[70vh] w-full rounded-md border border-[var(--admin-border)]"
+        />
+      )}
     </div>
   );
 }
@@ -235,7 +264,7 @@ export default function ApplicationDetail({
           </dl>
         </div>
 
-        <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
+        <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 md:col-span-2">
           <h2 className="mb-3 text-base font-medium text-[var(--admin-text)]">Documents</h2>
           {documents.length === 0 ? (
             <p className="text-sm text-[var(--admin-text-muted)]">No documents on file.</p>
@@ -283,12 +312,24 @@ export default function ApplicationDetail({
           <h2 className="mb-3 text-base font-medium text-[var(--admin-text)]">Status</h2>
           <div className="flex flex-col gap-2">
             <Select value={status} onValueChange={(v) => v && setStatus(v as Application["status"])}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger
+                className={
+                  "w-full font-medium " +
+                  (statusBadgeClass[status] ?? "bg-[var(--admin-neutral-soft)] text-[var(--admin-text-muted)]")
+                }
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {APPLICATION_STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>
+                  <SelectItem
+                    key={s}
+                    value={s}
+                    className={
+                      "my-0.5 rounded-md " +
+                      (statusBadgeClass[s] ?? "bg-[var(--admin-neutral-soft)] text-[var(--admin-text-muted)]")
+                    }
+                  >
                     {applicationStatusLabel(s)}
                   </SelectItem>
                 ))}

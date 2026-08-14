@@ -112,6 +112,14 @@ They're applied automatically, not by hand:
 
 After adding a migration, run `npm run types:gen` to regenerate `lib/database.types.ts`, so the rest of the app has correct types for your schema change.
 
+If you add a new table and then immediately hit `Could not find the table 'public.your_table' in the schema cache` from the app, the migration itself is fine, PostgREST just hasn't picked up the change yet. It caches the schema at startup and normally reloads automatically on DDL, but that doesn't always fire reliably against the local stack. Force it with:
+
+```
+psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -c "NOTIFY pgrst, 'reload schema';"
+```
+
+or just restart the stack (`supabase stop && supabase start`).
+
 When writing a migration, prefer expand-style changes over contract-style changes where possible:
 
 - **Expand**: new nullable columns, new tables, widened validation. Safe to land before the code that uses them, since the currently deployed app just ignores schema it doesn't reference yet.

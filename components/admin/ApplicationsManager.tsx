@@ -94,7 +94,7 @@ export default function ApplicationsManager({
   // stale id just filters down to zero rows rather than erroring, same as
   // a manually-typed URL would.
   const [jobFilter, setJobFilter] = useState<string>(() => searchParams.get("job") ?? "all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>(() => searchParams.get("status") ?? "all");
   const [sort, setSort] = useState<Sort>({ column: "createdAt", direction: "desc" });
   const [page, setPage] = useState(1);
 

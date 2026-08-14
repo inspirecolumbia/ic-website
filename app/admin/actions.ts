@@ -397,6 +397,9 @@ export async function getApplicationDocumentUrl(
   if (!data.storage_path) return { error: "This document is unavailable." };
 
   return createApplicationDocumentSignedUrl(supabase, data.storage_path, {
+    // Preview embeds the URL in an iframe for as long as the panel stays
+    // open, so it needs more headroom than a one-shot download click.
+    expiresInSeconds: mode === "preview" ? 300 : 60,
     download: mode === "download" ? data.file_name : false,
   });
 }
