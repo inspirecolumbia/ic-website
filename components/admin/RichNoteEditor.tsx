@@ -5,12 +5,18 @@ import { Bold, Italic, List, Underline } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Uncontrolled by design: contentEditable fights React's controlled-value
-// model (every re-render would reset the cursor position mid-typing), so
-// the initial HTML is set once via dangerouslySetInnerHTML and never
-// updated from the value prop again. Callers that need a fresh editor for
-// different content (e.g. switching which note is being edited) should
-// remount with a `key` prop rather than relying on the value prop to update
-// an existing instance.
+// model (every re-render would reset the cursor position mid-typing). The
+// initial HTML is set imperatively, once, in the mount effect below --
+// NOT via a dangerouslySetInnerHTML prop in the JSX. Putting it in JSX was
+// tried first and re-wiped the div on every keystroke: onInput calls
+// onChange, the parent re-renders to track the draft, this component
+// re-renders with it, and React re-applies dangerouslySetInnerHTML on that
+// update even though the __html string value never changed, clobbering
+// whatever the user just typed. Setting it once, outside React's render
+// cycle, is the standard fix for this well-known contentEditable pitfall.
+// Callers that need a fresh editor for different content (e.g. switching
+// which note is being edited) should remount with a `key` prop rather than
+// relying on the initialHtml prop to update an existing instance.
 export default function RichNoteEditor({
   initialHtml = "",
   onChange,
@@ -29,6 +35,7 @@ export default function RichNoteEditor({
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (ref.current) ref.current.innerHTML = initialHtml;
     if (autoFocus) ref.current?.focus();
     // Only on mount -- see the uncontrolled-by-design note above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -118,7 +125,7 @@ export default function RichNoteEditor({
         data-placeholder={placeholder}
         onInput={() => onChange(ref.current?.innerHTML ?? "")}
         onKeyDown={handleKeyDown}
-        dangerouslySetInnerHTML={{ __html: initialHtml }}
+        suppressContentEditableWarning
         className="min-h-[4.5rem] px-2.5 py-2 text-sm text-[var(--admin-text)] outline-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)] [&_ul]:list-disc [&_ul]:pl-5"
       />
     </div>

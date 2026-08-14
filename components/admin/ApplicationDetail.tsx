@@ -301,10 +301,18 @@ export default function ApplicationDetail({
               </label>
               <Select value={status} onValueChange={(v) => v && setStatus(v as Application["status"])}>
                 <SelectTrigger id="application-status-select" className="w-full">
-                  <span className="flex items-center gap-2">
-                    <StatusDot status={status} />
-                    <SelectValue />
-                  </span>
+                  {/* base-ui's SelectValue can't infer a plain-text label from a
+                      SelectItem whose children are JSX (the dot + label span
+                      below), it falls back to the raw enum value without this
+                      render-prop -- see Select.Value's `children` function form. */}
+                  <SelectValue>
+                    {() => (
+                      <span className="flex items-center gap-2">
+                        <StatusDot status={status} />
+                        {applicationStatusLabel(status)}
+                      </span>
+                    )}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {APPLICATION_STATUSES.map((s) => (
