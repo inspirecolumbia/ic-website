@@ -217,7 +217,7 @@ function NoteRow({
             >
               Cancel
             </Button>
-            {error && <p className="text-xs text-[var(--admin-danger)]">{error}</p>}
+            {error && <p role="alert" className="text-xs text-[var(--admin-danger)]">{error}</p>}
           </div>
         </div>
       ) : (
@@ -336,7 +336,7 @@ export default function ReviewerNotesThread({
         <Button type="button" size="sm" disabled={pending || isReviewerNoteEmpty(newNoteHtml)} onClick={addNote}>
           {pending ? "Adding..." : "Add note"}
         </Button>
-        {error && <p className="text-xs text-[var(--admin-danger)]">{error}</p>}
+        {error && <p role="alert" className="text-xs text-[var(--admin-danger)]">{error}</p>}
       </div>
     </section>
   );

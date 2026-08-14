@@ -71,7 +71,7 @@ export default function DocumentViewer({ documents }: { documents: ApplicationDo
             <DialogTitle>{active ? documentLabel(active.document_type) : "Document"}</DialogTitle>
           </DialogHeader>
           {loading && <p className="py-10 text-center text-sm text-[var(--admin-text-muted)]">Loading...</p>}
-          {error && <p className="py-10 text-center text-sm text-[var(--admin-danger)]">{error}</p>}
+          {error && <p role="alert" className="py-10 text-center text-sm text-[var(--admin-danger)]">{error}</p>}
           {url && !loading && !error && (
             <iframe
               src={url}

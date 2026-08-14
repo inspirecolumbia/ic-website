@@ -73,20 +73,22 @@ function CopyEmailButton({ email }: { email: string }) {
   }, [copied]);
 
   return (
-    <button
-      type="button"
-      aria-label={copied ? "Email address copied" : "Copy email address"}
-      onClick={async () => {
-        await navigator.clipboard.writeText(email);
-        setCopied(true);
-      }}
-      className="flex size-6 items-center justify-center rounded-md text-[var(--admin-text-muted)] outline-none hover:bg-[var(--admin-surface-hover)] hover:text-[var(--admin-text)] focus-visible:ring-2 focus-visible:ring-[var(--admin-brand)]"
-    >
-      <Copy className="size-3.5" />
+    <span className="relative inline-flex">
+      <button
+        type="button"
+        aria-label={copied ? "Email address copied" : "Copy email address"}
+        onClick={async () => {
+          await navigator.clipboard.writeText(email);
+          setCopied(true);
+        }}
+        className="flex size-6 items-center justify-center rounded-md text-[var(--admin-text-muted)] outline-none hover:bg-[var(--admin-surface-hover)] hover:text-[var(--admin-text)] focus-visible:ring-2 focus-visible:ring-[var(--admin-brand)]"
+      >
+        <Copy className="size-3.5" />
+      </button>
       <span className="sr-only" role="status">
-        {copied ? "Copied" : ""}
+        {copied ? "Email address copied" : ""}
       </span>
-    </button>
+    </span>
   );
 }
 
