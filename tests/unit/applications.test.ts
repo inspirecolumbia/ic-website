@@ -30,7 +30,7 @@ const baseInput = {
   teamPreferences: [
     { teamName: "Nonprofit Finances and Legal", rank: 1 },
     { teamName: "Technology and Web Development", rank: 2 },
-    { teamName: "6a. Production", rank: 3 },
+    { teamName: "Production", rank: 3 },
   ],
   screeningAnswers: [{ question: "Why join?", answer: "Because." }],
 };
@@ -259,7 +259,7 @@ describe("buildApplicationInsertPayload", () => {
         teamPreferences: [
           { teamName: "Nonprofit Finances and Legal", rank: 1 },
           { teamName: "Nonprofit Finances and Legal", rank: 2 },
-          { teamName: "6a. Production", rank: 3 },
+          { teamName: "Production", rank: 3 },
         ],
       })
     ).toThrow(ApplicationValidationError);
@@ -283,11 +283,11 @@ describe("buildApplicationInsertPayload", () => {
       ...baseInput,
       teamPreferences: [
         { teamName: "Nonprofit Finances and Legal", rank: 1 },
-        { teamName: "6b. Logistics & Operations", rank: 2 },
-        { teamName: "6a. Production", rank: 3 },
+        { teamName: "Logistics & Operations", rank: 2 },
+        { teamName: "Production", rank: 3 },
       ],
     });
-    expect(payload.p_team_preferences.map((pref) => pref.teamName)).toContain("6b. Logistics & Operations");
+    expect(payload.p_team_preferences.map((pref) => pref.teamName)).toContain("Logistics & Operations");
   });
 });
 

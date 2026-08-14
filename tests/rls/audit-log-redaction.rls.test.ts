@@ -34,7 +34,7 @@ async function submitViaRpc(client: PoolClient, jobId: string) {
          {"documentType":"transcript","fileName":"t.pdf","storagePath":"applications/x/transcript.pdf"}]'::jsonb,
        '[{"teamName":"Nonprofit Finances and Legal","rank":1},
          {"teamName":"Technology and Web Development","rank":2},
-         {"teamName":"6a. Production","rank":3}]'::jsonb,
+         {"teamName":"Production","rank":3}]'::jsonb,
        '[]'::jsonb
      )`,
     [appId, jobId]

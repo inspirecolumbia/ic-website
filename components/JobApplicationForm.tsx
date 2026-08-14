@@ -58,7 +58,7 @@ function Required() {
 
 function FormSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <fieldset className="border-t border-[var(--line)] pt-8 first:border-t-0 first:pt-0">
+    <fieldset className="border-t border-[var(--line)] pt-2 first:border-t-0 first:pt-0">
       <legend className="mb-4 [font-family:var(--font-serif)] text-[1.15rem] font-semibold text-[var(--ink)]">
         {title}
       </legend>
@@ -290,11 +290,8 @@ export default function JobApplicationForm({
         </Link>
 
         <div className="rounded-[10px] border border-[var(--line)] bg-[var(--card-public)] p-6 shadow-[0_8px_24px_rgba(29,78,216,0.08)] md:p-10">
-          <p className="m-0 text-[0.9rem] font-bold uppercase tracking-[0.08em] text-[var(--brand)]">
-            {jobTitle}
-          </p>
           <h1 className="mb-2 mt-2 [font-family:var(--font-serif)] text-[clamp(1.7rem,3.5vw,2.4rem)] font-semibold">
-            Apply now
+            {jobTitle}
           </h1>
           <p className="mb-8 text-[1.02rem] text-[var(--ink-muted)]">
             Fill out the form below to apply. Fields marked with an asterisk are required.
@@ -309,7 +306,7 @@ export default function JobApplicationForm({
               </p>
             )}
 
-            <FormSection title="Personal information">
+            <FormSection title="Personal Information">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="first_name" className="mb-1.5">
@@ -424,7 +421,7 @@ export default function JobApplicationForm({
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="major" className="mb-1.5">
-                    Major / field of study
+                    Major / Field of study
                     <Required />
                   </Label>
                   <Input
@@ -481,12 +478,12 @@ export default function JobApplicationForm({
             </FormSection>
 
             <FormSection title="Team preferences">
-              <div className="rounded-md border border-[var(--line)] bg-[var(--surface)] p-4">
+              <div className="rounded-md border-[var(--line)]">
                 <p className="mb-4 text-sm text-[var(--ink-muted)]">
                   Rank 3 teams in order of preference. All three choices are required, and each
                   must be a different team.
                 </p>
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-5">
                   {teamChoices.map(({ label, name, value, setValue, subTrack, setSubTrack, exclude }) => {
                     const isTeam6 = value === TEAM_6_PARENT_TITLE;
                     const resolvedValue = isTeam6 ? subTrack : value;
@@ -599,11 +596,7 @@ export default function JobApplicationForm({
                   {SCREENING_QUESTIONS.whatAppeals.question} (optional)
                 </Label>
                 <p className="mb-1.5 mt-1 text-sm text-[var(--ink-muted)]">
-                  This question is entirely optional! This is just for you to include additional
-                  information about yourself and your motivation for joining our team that we
-                  aren&apos;t able to get directly from reading a resume. Please feel free to
-                  answer with 2 sentences, 2 paragraphs, or no words at all. Leaving this question
-                  blank will not negatively affect your candidacy.
+                  Resumes don&apos;t always capture the full story. Share anything else you&apos;d like us to know about you, your goals, or your interest in joining our team. A short response is completely fine.
                 </p>
                 <Textarea
                   id="whatAppeals"

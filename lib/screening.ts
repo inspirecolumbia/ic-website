@@ -12,8 +12,8 @@ export const TEAMS = [
   "Marketing and Press Strategy",
   "Sponsorships and Corporate Partnerships",
   "Speaker Curation and Mentorship",
-  "6a. Production",
-  "6b. Logistics & Operations",
+  "Production",
+  "Logistics & Operations",
 ] as const;
 
 export type Team = (typeof TEAMS)[number];
@@ -23,7 +23,7 @@ export type Team = (typeof TEAMS)[number];
 // eventually the picker UI) can recognize the pair without hardcoding both
 // strings at every call site.
 export const TEAM_6_PARENT_TITLE = "Logistics and Operations / AV Production";
-export const TEAM_6_SUB_TRACKS: readonly Team[] = ["6a. Production", "6b. Logistics & Operations"];
+export const TEAM_6_SUB_TRACKS: readonly Team[] = ["Production", "Logistics & Operations"];
 
 // The 6 choices shown in the 3 team-ranking dropdowns -- TEAM_6_PARENT_TITLE
 // stands in for its two sub-tracks at picker level, since an applicant picks
@@ -108,8 +108,7 @@ export const YEAR_OF_STUDY_OPTIONS = [
 // are chosen) -- kept standalone so it's unit-testable without React.
 // Operates on TEAM_PICKER_OPTIONS (picker-level choices), not TEAMS
 // (storable values), since a dropdown item is "Logistics and Operations /
-// AV Production", never a bare "6a. Production" or "6b. Logistics &
-// Operations".
+// AV Production", never a bare "Production" or "Logistics & Operations".
 export function availableTeams(picked: (string | null | undefined)[]): string[] {
   return TEAM_PICKER_OPTIONS.filter((team) => !picked.includes(team));
 }

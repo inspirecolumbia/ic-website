@@ -6,8 +6,8 @@
 -- 3. Team whitelist renamed/reshaped: team 4 matches the frontend's final
 --    copy ("Sponsorships and Corporate Partnerships"), and team 6 no longer
 --    has a bare entry -- applicants must submit one of its two sub-tracks,
---    "6a. Production" or "6b. Logistics & Operations", directly. Keep in
---    sync with lib/screening.ts's TEAMS constant.
+--    "Production" or "Logistics & Operations", directly. Keep in sync with
+--    lib/screening.ts's TEAMS constant.
 -- 4. Exactly 3 distinct team preferences are now required (was: any number,
 --    duplicates allowed).
 -- Year of study intentionally gets no new SQL enforcement here: it keeps a
@@ -49,8 +49,8 @@ declare
     'Marketing and Press Strategy',
     'Sponsorships and Corporate Partnerships',
     'Speaker Curation and Mentorship',
-    '6a. Production',
-    '6b. Logistics & Operations'
+    'Production',
+    'Logistics & Operations'
   ];
   -- Keep in sync with lib/screening.ts's SCREENING_QUESTIONS required
   -- yes/no question text. The optional free-text question isn't checked.

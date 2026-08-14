@@ -9,8 +9,8 @@ describe("TEAMS", () => {
 
   it("never includes a bare team 6 value, only its two sub-tracks", () => {
     expect(TEAMS).not.toContain("Logistics and Operations / AV Production");
-    expect(TEAMS).toContain("6a. Production");
-    expect(TEAMS).toContain("6b. Logistics & Operations");
+    expect(TEAMS).toContain("Production");
+    expect(TEAMS).toContain("Logistics & Operations");
   });
 });
 
@@ -32,8 +32,8 @@ describe("TEAM_PICKER_OPTIONS", () => {
     expect(TEAM_PICKER_OPTIONS).toHaveLength(6);
     expect(new Set(TEAM_PICKER_OPTIONS).size).toBe(6);
     expect(TEAM_PICKER_OPTIONS).toContain("Logistics and Operations / AV Production");
-    expect(TEAM_PICKER_OPTIONS).not.toContain("6a. Production");
-    expect(TEAM_PICKER_OPTIONS).not.toContain("6b. Logistics & Operations");
+    expect(TEAM_PICKER_OPTIONS).not.toContain("Production");
+    expect(TEAM_PICKER_OPTIONS).not.toContain("Logistics & Operations");
   });
 });
 

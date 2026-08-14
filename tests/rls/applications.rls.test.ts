@@ -47,7 +47,7 @@ async function submitViaRpc(client: Client, jobId: string, overrides: { email?: 
          {"documentType":"transcript","fileName":"t.pdf","storagePath":"applications/x/transcript.pdf"}]'::jsonb,
        '[{"teamName":"Nonprofit Finances and Legal","rank":1},
          {"teamName":"Technology and Web Development","rank":2},
-         {"teamName":"6a. Production","rank":3}]'::jsonb,
+         {"teamName":"Production","rank":3}]'::jsonb,
        '[]'::jsonb
      )`,
     [jobId, overrides.email ?? `ada-${Math.random().toString(36).slice(2)}@example.com`]

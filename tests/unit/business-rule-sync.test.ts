@@ -18,8 +18,8 @@ const SQL_VALID_TEAMS = [
   "Marketing and Press Strategy",
   "Sponsorships and Corporate Partnerships",
   "Speaker Curation and Mentorship",
-  "6a. Production",
-  "6b. Logistics & Operations",
+  "Production",
+  "Logistics & Operations",
 ];
 
 // Keep in sync with the RPC's v_yes_no_questions array.
