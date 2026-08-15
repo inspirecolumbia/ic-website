@@ -1,5 +1,6 @@
 import { applicationStatusLabel, type ApplicationListRow } from "@/lib/applications";
 import { formatDateTime } from "@/lib/history";
+import { SCREENING_QUESTIONS } from "@/lib/screening";
 
 export type ApplicationExportRow = {
   name: string;
@@ -13,12 +14,22 @@ export type ApplicationExportRow = {
   jobTitle: string;
   status: string;
   submittedAt: string;
-  screeningAnswers: string;
+  livesNearColumbia: string;
+  authorizedToWork: string;
+  needsVisaSponsorship: string;
+  interestInJoining: string;
 };
 
-// One joined "Screening Answers" text column rather than per-question
-// columns -- different jobs can have different screening questions, so a
-// fixed column set would break across jobs.
+function findAnswer(answers: { question: string; answer: string }[], questionText: string): string {
+  return answers.find((a) => a.question === questionText)?.answer ?? "";
+}
+
+// One column per screening question, not a single joined text blob --
+// screening questions are a fixed, global set (see SCREENING_QUESTIONS in
+// lib/screening.ts, "no per-job configuration exists or is planned"), so
+// there's no risk of the column set breaking across jobs the way a
+// per-job template would introduce. If that ever changes (branch 20's
+// template builder), this needs revisiting.
 export function applicationsToExportRows(
   apps: ApplicationListRow[],
   screeningByApp: Map<string, { question: string; answer: string }[]>
@@ -37,7 +48,10 @@ export function applicationsToExportRows(
       jobTitle: app.jobTitle,
       status: applicationStatusLabel(app.status),
       submittedAt: formatDateTime(app.createdAt),
-      screeningAnswers: answers.map((a) => `${a.question}: ${a.answer}`).join("\n"),
+      livesNearColumbia: findAnswer(answers, SCREENING_QUESTIONS.livesNearColumbia.question),
+      authorizedToWork: findAnswer(answers, SCREENING_QUESTIONS.authorizedToWork.question),
+      needsVisaSponsorship: findAnswer(answers, SCREENING_QUESTIONS.needsVisaSponsorship.question),
+      interestInJoining: findAnswer(answers, SCREENING_QUESTIONS.whatAppeals.question),
     };
   });
 }

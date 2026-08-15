@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { applicationsToExportRows } from "@/lib/applications-export";
 import type { ApplicationListRow } from "@/lib/applications";
+import { SCREENING_QUESTIONS } from "@/lib/screening";
 
 const baseApp: ApplicationListRow = {
   id: "app-1",
@@ -37,18 +38,25 @@ describe("applicationsToExportRows", () => {
     });
   });
 
-  it("joins multiple screening answers into one newline-separated column", () => {
+  it("puts each screening question's answer in its own column", () => {
     const screeningByApp = new Map([
       [
         "app-1",
         [
-          { question: "Why join?", answer: "Because." },
-          { question: "Available hours?", answer: "10/week" },
+          { question: SCREENING_QUESTIONS.livesNearColumbia.question, answer: "Yes" },
+          { question: SCREENING_QUESTIONS.authorizedToWork.question, answer: "Yes" },
+          { question: SCREENING_QUESTIONS.needsVisaSponsorship.question, answer: "No" },
+          { question: SCREENING_QUESTIONS.whatAppeals.question, answer: "The mission." },
         ],
       ],
     ]);
     const rows = applicationsToExportRows([baseApp], screeningByApp);
-    expect(rows[0].screeningAnswers).toBe("Why join?: Because.\nAvailable hours?: 10/week");
+    expect(rows[0]).toMatchObject({
+      livesNearColumbia: "Yes",
+      authorizedToWork: "Yes",
+      needsVisaSponsorship: "No",
+      interestInJoining: "The mission.",
+    });
   });
 
   it("falls back to empty strings for nullable fields", () => {
@@ -66,8 +74,24 @@ describe("applicationsToExportRows", () => {
     });
   });
 
-  it("returns an empty screening answers column when an application has none", () => {
+  it("returns empty strings for screening questions an application has no answer for", () => {
     const rows = applicationsToExportRows([baseApp], new Map());
-    expect(rows[0].screeningAnswers).toBe("");
+    expect(rows[0]).toMatchObject({
+      livesNearColumbia: "",
+      authorizedToWork: "",
+      needsVisaSponsorship: "",
+      interestInJoining: "",
+    });
+  });
+
+  it("ignores an answer whose question text doesn't match any known screening question", () => {
+    const screeningByApp = new Map([["app-1", [{ question: "Some unrelated question?", answer: "huh" }]]]);
+    const rows = applicationsToExportRows([baseApp], screeningByApp);
+    expect(rows[0]).toMatchObject({
+      livesNearColumbia: "",
+      authorizedToWork: "",
+      needsVisaSponsorship: "",
+      interestInJoining: "",
+    });
   });
 });
