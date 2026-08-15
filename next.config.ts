@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Next 16.3 started auto-generating AGENTS.md/CLAUDE.md at the repo root
+  // on every `next dev` (framework advisory boilerplate, not this repo's
+  // own conventions -- CLAUDE.md here is the user's personal global config,
+  // not project-specific). Opted out rather than having a dev server
+  // silently create/modify root-level files the team never asked for.
+  agentRules: false,
   // Lets the e2e dev server (tests/e2e, run via playwright.config.ts) use a
   // separate build cache from a developer's own `npm run dev`, since Next's
   // dev lock is scoped to distDir, not to the port -- two `next dev`

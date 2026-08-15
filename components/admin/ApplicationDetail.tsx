@@ -2,10 +2,9 @@
 
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
-import { Download } from "lucide-react";
-import { addApplicationReviewerNote, getApplicationDocumentUrl, updateApplicationStatus } from "@/app/admin/actions";
+import { Copy, Mail, Phone } from "lucide-react";
+import { updateApplicationStatus } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -13,7 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { APPLICATION_STATUSES, applicationStatusLabel, type Application } from "@/lib/applications";
+import DocumentViewer from "@/components/admin/DocumentViewer";
+import ReviewerNotesThread, { type ReviewerNoteEntry } from "@/components/admin/ReviewerNotesThread";
+import { APPLICATION_STATUSES, applicationStatusLabel, ordinal, type Application } from "@/lib/applications";
+import { SCREENING_QUESTIONS } from "@/lib/screening";
 import { formatDateTime } from "@/lib/history";
 import type { Database } from "@/lib/database.types";
 
@@ -22,15 +24,17 @@ type TeamPreference = Database["public"]["Tables"]["application_team_preferences
 type ScreeningAnswer = Database["public"]["Tables"]["application_screening_answers"]["Row"];
 type StatusHistoryEntry = Database["public"]["Tables"]["application_status_history"]["Row"];
 
-export type ReviewerNoteEntry = {
-  id: string;
-  note: string;
-  createdAt: string;
-  authorName: string;
-  authorRole: string | null;
+const statusDotClass: Record<string, string> = {
+  submitted: "bg-[var(--admin-text-muted)]",
+  under_review: "bg-[var(--admin-brand)]",
+  interviewing: "bg-[var(--admin-brand)]",
+  offer: "bg-[var(--admin-success)]",
+  hired: "bg-[var(--admin-success)]",
+  rejected: "bg-[var(--admin-danger)]",
+  withdrawn: "bg-[var(--admin-danger)]",
 };
 
-const statusBadgeClass: Record<string, string> = {
+const statusPillClass: Record<string, string> = {
   submitted: "bg-[var(--admin-neutral-soft)] text-[var(--admin-text-muted)]",
   under_review: "bg-[var(--admin-brand-soft)] text-[var(--admin-brand)]",
   interviewing: "bg-[var(--admin-brand-soft)] text-[var(--admin-brand)]",
@@ -40,88 +44,51 @@ const statusBadgeClass: Record<string, string> = {
   withdrawn: "bg-[var(--admin-danger-soft)] text-[var(--admin-danger)]",
 };
 
-function documentLabel(documentType: string) {
-  return documentType === "resume" ? "Resume" : documentType === "transcript" ? "Transcript" : documentType;
+// Yes/no screening questions get a subtle indicator next to their answer,
+// but never a green/red one -- whether "Yes" is the encouraging answer
+// depends entirely on the question (compare "authorized to work" to "needs
+// visa sponsorship"), so color would just be misleading noise here.
+const YES_NO_QUESTIONS: Set<string> = new Set(
+  Object.values(SCREENING_QUESTIONS)
+    .filter((q) => q.type === "yes_no")
+    .map((q) => q.question)
+);
+
+function StatusDot({ status }: { status: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={"inline-block size-2 rounded-full " + (statusDotClass[status] ?? "bg-[var(--admin-text-muted)]")}
+    />
+  );
 }
 
-function DocumentActions({ document }: { document: ApplicationDocument }) {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [pendingMode, setPendingMode] = useState<"preview" | "download" | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [, startTransition] = useTransition();
+function CopyEmailButton({ email }: { email: string }) {
+  const [copied, setCopied] = useState(false);
 
-  function togglePreview() {
-    if (previewUrl) {
-      setPreviewUrl(null);
-      return;
-    }
-    setError(null);
-    setPendingMode("preview");
-    startTransition(() => {
-      getApplicationDocumentUrl(document.id, "preview").then((result) => {
-        setPendingMode(null);
-        if ("error" in result) {
-          setError(result.error);
-          return;
-        }
-        setPreviewUrl(result.url);
-      });
-    });
-  }
-
-  function handleDownload() {
-    setError(null);
-    setPendingMode("download");
-    startTransition(() => {
-      getApplicationDocumentUrl(document.id, "download").then((result) => {
-        setPendingMode(null);
-        if ("error" in result) {
-          setError(result.error);
-          return;
-        }
-        // window.open() after this await would hit the popup blocker since
-        // it's no longer inside the click's call stack -- navigating the
-        // current tab avoids that without needing a pre-opened blank tab.
-        // Download forces Content-Disposition: attachment via the signed
-        // URL's download param (see createApplicationDocumentSignedUrl);
-        // the embedded preview below uses a separate, longer-lived signed
-        // URL instead of navigating away at all.
-        window.location.href = result.url;
-      });
-    });
-  }
+  useEffect(() => {
+    if (!copied) return;
+    const timeout = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timeout);
+  }, [copied]);
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <Button type="button" variant="outline" size="sm" disabled={pendingMode !== null} onClick={togglePreview}>
-          {pendingMode === "preview"
-            ? "Loading..."
-            : previewUrl
-              ? `Hide ${documentLabel(document.document_type)}`
-              : `Preview ${documentLabel(document.document_type)}`}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={pendingMode !== null}
-          onClick={handleDownload}
-          className="gap-1.5"
-        >
-          <Download className="size-3.5" />
-          {pendingMode === "download" ? "Preparing..." : "Download"}
-        </Button>
-      </div>
-      {error && <p className="text-xs text-[var(--admin-danger)]">{error}</p>}
-      {previewUrl && (
-        <iframe
-          src={previewUrl}
-          title={`${documentLabel(document.document_type)} preview`}
-          className="h-[70vh] w-full rounded-md border border-[var(--admin-border)]"
-        />
-      )}
-    </div>
+    <span className="relative inline-flex">
+      <button
+        type="button"
+        aria-label={copied ? "Email address copied" : "Copy email address"}
+        onClick={async () => {
+          await navigator.clipboard.writeText(email);
+          setCopied(true);
+        }}
+        className="flex size-6 items-center justify-center rounded-md text-[var(--admin-text-muted)] outline-none hover:bg-[var(--admin-surface-hover)] hover:text-[var(--admin-text)] focus-visible:ring-2 focus-visible:ring-[var(--admin-brand)]"
+      >
+        <Copy className="size-3.5" />
+      </button>
+      <span className="sr-only" role="status">
+        {copied ? "Email address copied" : ""}
+      </span>
+    </span>
   );
 }
 
@@ -134,6 +101,8 @@ export default function ApplicationDetail({
   screeningAnswers,
   statusHistory,
   reviewerNotes,
+  currentUserId,
+  currentUserRole,
 }: {
   application: Application;
   jobTitle: string;
@@ -143,13 +112,13 @@ export default function ApplicationDetail({
   screeningAnswers: ScreeningAnswer[];
   statusHistory: StatusHistoryEntry[];
   reviewerNotes: ReviewerNoteEntry[];
+  currentUserId: string | null;
+  currentUserRole: "staff" | "admin";
 }) {
   const [status, setStatus] = useState(application.status);
-  const [newNote, setNewNote] = useState("");
+  const [savedStatus, setSavedStatus] = useState(application.status);
   const [statusPending, startStatusTransition] = useTransition();
-  const [notePending, startNoteTransition] = useTransition();
   const [statusError, setStatusError] = useState<string | null>(null);
-  const [noteError, setNoteError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -165,25 +134,14 @@ export default function ApplicationDetail({
         if (result && "error" in result) {
           setStatusError(result.error);
         } else {
+          setSavedStatus(status);
           setSuccessMessage("Status saved.");
         }
       });
     });
   }
 
-  function postNote() {
-    setNoteError(null);
-    startNoteTransition(() => {
-      addApplicationReviewerNote(application.id, newNote).then((result) => {
-        if (result && "error" in result) {
-          setNoteError(result.error);
-        } else {
-          setNewNote("");
-          setSuccessMessage("Note posted.");
-        }
-      });
-    });
-  }
+  const sortedTeamPreferences = [...teamPreferences].sort((a, b) => a.preference_rank - b.preference_rank);
 
   return (
     <div>
@@ -194,20 +152,6 @@ export default function ApplicationDetail({
         ← Back to applications
       </Link>
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold [font-family:var(--font-serif)]">
-          {application.firstName} {application.lastName}
-        </h1>
-        <span
-          className={
-            "rounded-full px-2 py-0.5 text-xs font-medium " +
-            (statusBadgeClass[application.status] ?? "bg-[var(--admin-neutral-soft)] text-[var(--admin-text-muted)]")
-          }
-        >
-          {applicationStatusLabel(application.status)}
-        </span>
-      </div>
-
       {successMessage && (
         <p
           role="status"
@@ -217,193 +161,212 @@ export default function ApplicationDetail({
         </p>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
-          <h2 className="mb-3 text-base font-medium text-[var(--admin-text)]">Applicant</h2>
-          <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
-            <div>
-              <dt className="text-xs text-[var(--admin-text-muted)]">Job</dt>
-              <dd className="text-sm text-[var(--admin-text)]">{jobTitle}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-[var(--admin-text-muted)]">Role</dt>
-              <dd className="text-sm text-[var(--admin-text)]">{jobRole ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-[var(--admin-text-muted)]">Submitted</dt>
-              <dd className="text-sm text-[var(--admin-text)]">{formatDateTime(application.createdAt)}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-[var(--admin-text-muted)]">Email</dt>
-              <dd className="text-sm text-[var(--admin-text)]">{application.email}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-[var(--admin-text-muted)]">Phone</dt>
-              <dd className="text-sm text-[var(--admin-text)]">{application.phone ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-[var(--admin-text-muted)]">School</dt>
-              <dd className="text-sm text-[var(--admin-text)]">{application.school ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-[var(--admin-text-muted)]">School email</dt>
-              <dd className="text-sm text-[var(--admin-text)]">{application.schoolEmail ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-[var(--admin-text-muted)]">Major</dt>
-              <dd className="text-sm text-[var(--admin-text)]">{application.major ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-[var(--admin-text-muted)]">Year of study</dt>
-              <dd className="text-sm text-[var(--admin-text)]">{application.yearOfStudy ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-[var(--admin-text-muted)]">GPA</dt>
-              <dd className="text-sm text-[var(--admin-text)]">{application.gpa ?? "—"}</dd>
-            </div>
-          </dl>
+      {/* Applicant header */}
+      <div className="mb-6 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-xl font-semibold text-[var(--admin-text)]">
+            {application.firstName} {application.lastName}
+          </h1>
+          <span
+            className={
+              "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium " +
+              (statusPillClass[application.status] ?? "bg-[var(--admin-neutral-soft)] text-[var(--admin-text-muted)]")
+            }
+          >
+            <StatusDot status={application.status} />
+            {applicationStatusLabel(application.status)}
+          </span>
         </div>
+        <p className="mt-0.5 text-sm text-[var(--admin-text-muted)]">
+          {jobTitle}
+          {jobRole ? ` · ${jobRole}` : ""}
+        </p>
+        <p className="mt-0.5 text-xs text-[var(--admin-text-muted)]">
+          Submitted {formatDateTime(application.createdAt)}
+        </p>
 
-        <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 md:col-span-2">
-          <h2 className="mb-3 text-base font-medium text-[var(--admin-text)]">Documents</h2>
-          {documents.length === 0 ? (
-            <p className="text-sm text-[var(--admin-text-muted)]">No documents on file.</p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {documents.map((doc) => (
-                <DocumentActions key={doc.id} document={doc} />
-              ))}
-            </div>
+        <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
+          <span className="flex items-center gap-1.5">
+            <Mail className="size-3.5 text-[var(--admin-text-muted)]" aria-hidden="true" />
+            <a href={`mailto:${application.email}`} className="text-[var(--admin-brand)] hover:underline">
+              {application.email}
+            </a>
+            <CopyEmailButton email={application.email} />
+          </span>
+          {application.phone && (
+            <span className="flex items-center gap-1.5">
+              <Phone className="size-3.5 text-[var(--admin-text-muted)]" aria-hidden="true" />
+              <a href={`tel:${application.phone}`} className="text-[var(--admin-brand)] hover:underline">
+                {application.phone}
+              </a>
+            </span>
           )}
         </div>
+      </div>
 
-        <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
-          <h2 className="mb-3 text-base font-medium text-[var(--admin-text)]">Team preferences</h2>
-          {teamPreferences.length === 0 ? (
-            <p className="text-sm text-[var(--admin-text-muted)]">None provided.</p>
-          ) : (
-            <ol className="m-0 flex list-none flex-col gap-1 p-0 text-sm text-[var(--admin-text)]">
-              {teamPreferences.map((pref) => (
-                <li key={pref.id}>
-                  {pref.preference_rank}. {pref.team_name}
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
-
-        <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
-          <h2 className="mb-3 text-base font-medium text-[var(--admin-text)]">Screening answers</h2>
-          {screeningAnswers.length === 0 ? (
-            <p className="text-sm text-[var(--admin-text-muted)]">None provided.</p>
-          ) : (
-            <dl className="flex flex-col gap-3">
-              {screeningAnswers.map((answer) => (
-                <div key={answer.id}>
-                  <dt className="text-xs text-[var(--admin-text-muted)]">{answer.question}</dt>
-                  <dd className="text-sm text-[var(--admin-text)]">{answer.answer}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </div>
-
-        <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
-          <h2 className="mb-3 text-base font-medium text-[var(--admin-text)]">Status</h2>
-          <div className="flex flex-col gap-2">
-            <Select value={status} onValueChange={(v) => v && setStatus(v as Application["status"])}>
-              <SelectTrigger
-                className={
-                  "w-full font-medium " +
-                  (statusBadgeClass[status] ?? "bg-[var(--admin-neutral-soft)] text-[var(--admin-text-muted)]")
-                }
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {APPLICATION_STATUSES.map((s) => (
-                  <SelectItem
-                    key={s}
-                    value={s}
-                    className={
-                      "my-0.5 rounded-md " +
-                      (statusBadgeClass[s] ?? "bg-[var(--admin-neutral-soft)] text-[var(--admin-text-muted)]")
-                    }
-                  >
-                    {applicationStatusLabel(s)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              type="button"
-              size="sm"
-              disabled={statusPending || status === application.status}
-              onClick={saveStatus}
-            >
-              {statusPending ? "Saving..." : "Save status"}
-            </Button>
-            {statusError && <p className="text-xs text-[var(--admin-danger)]">{statusError}</p>}
-          </div>
-
-          <h3 className="mb-2 mt-4 text-sm font-medium text-[var(--admin-text)]">History</h3>
-          {statusHistory.length === 0 ? (
-            <p className="text-sm text-[var(--admin-text-muted)]">No status changes yet.</p>
-          ) : (
-            <ul className="m-0 flex list-none flex-col gap-1 p-0 text-xs text-[var(--admin-text-muted)]">
-              {statusHistory.map((entry) => (
-                <li key={entry.id}>
-                  {formatDateTime(entry.created_at)}:{" "}
-                  {entry.old_status ? `${applicationStatusLabel(entry.old_status)} → ` : ""}
-                  {applicationStatusLabel(entry.new_status)}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4 md:col-span-2">
-          <h2 className="mb-3 text-base font-medium text-[var(--admin-text)]">Reviewer notes</h2>
-          <p className="mb-3 text-xs text-[var(--admin-text-muted)]">
-            Internal notes, not visible to the applicant. Each entry is kept as its own post, not
-            overwritten, so multiple staff/admins can weigh in over time.
-          </p>
-
-          {reviewerNotes.length === 0 ? (
-            <p className="mb-3 text-sm text-[var(--admin-text-muted)]">No notes yet.</p>
-          ) : (
-            <ul className="m-0 mb-3 flex list-none flex-col gap-3 p-0">
-              {reviewerNotes.map((entry) => (
-                <li
-                  key={entry.id}
-                  className="rounded-md border border-[var(--admin-border)] bg-[var(--admin-surface-hover)] p-3"
-                >
-                  <div className="mb-1 flex items-center justify-between gap-2 text-xs text-[var(--admin-text-muted)]">
-                    <span className="font-medium text-[var(--admin-text)]">
-                      {entry.authorName}
-                      {entry.authorRole ? ` (${entry.authorRole})` : ""}
-                    </span>
-                    <span>{formatDateTime(entry.createdAt)}</span>
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start">
+        {/* Main column */}
+        <div className="flex flex-col gap-6">
+          <section aria-labelledby="screening-heading" className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
+            <h2 id="screening-heading" className="mb-3 text-base font-medium text-[var(--admin-text)]">
+              Screening answers
+            </h2>
+            {screeningAnswers.length === 0 ? (
+              <p className="text-sm text-[var(--admin-text-muted)]">None provided.</p>
+            ) : (
+              <dl className="flex flex-col gap-4">
+                {screeningAnswers.map((answer) => (
+                  <div key={answer.id} className="border-l-2 border-[var(--admin-border)] pl-3">
+                    <dt className="text-sm font-medium text-[var(--admin-text)]">{answer.question}</dt>
+                    <dd className="mt-1 text-sm whitespace-pre-wrap text-[var(--admin-text-muted)]">
+                      {YES_NO_QUESTIONS.has(answer.question) ? (
+                        <span className="inline-block rounded border border-[var(--admin-border-strong)] px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide text-[var(--admin-text)]">
+                          {answer.answer}
+                        </span>
+                      ) : (
+                        answer.answer
+                      )}
+                    </dd>
                   </div>
-                  <p className="m-0 whitespace-pre-wrap text-sm text-[var(--admin-text)]">{entry.note}</p>
-                </li>
-              ))}
-            </ul>
-          )}
+                ))}
+              </dl>
+            )}
+          </section>
 
-          <Textarea
-            value={newNote}
-            onChange={(e) => setNewNote(e.target.value)}
-            rows={3}
-            placeholder="Add a note..."
-          />
-          <div className="mt-2 flex items-center gap-2">
-            <Button type="button" size="sm" disabled={notePending || !newNote.trim()} onClick={postNote}>
-              {notePending ? "Posting..." : "Post note"}
-            </Button>
-            {noteError && <p className="text-xs text-[var(--admin-danger)]">{noteError}</p>}
-          </div>
+          <section aria-labelledby="documents-heading" className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
+            <h2 id="documents-heading" className="mb-3 text-base font-medium text-[var(--admin-text)]">
+              Documents
+            </h2>
+            <DocumentViewer documents={documents} />
+          </section>
+
+          <section aria-labelledby="details-heading" className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
+            <h2 id="details-heading" className="mb-3 text-base font-medium text-[var(--admin-text)]">
+              Team preferences and details
+            </h2>
+            <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
+              <div>
+                <dt className="text-xs text-[var(--admin-text-muted)]">Team preferences</dt>
+                {sortedTeamPreferences.length === 0 ? (
+                  <dd className="mt-1 text-sm text-[var(--admin-text)]">None provided.</dd>
+                ) : (
+                  <dd className="mt-1">
+                    <ol className="m-0 flex list-none flex-col gap-1 p-0 text-sm text-[var(--admin-text)]">
+                      {sortedTeamPreferences.map((pref) => (
+                        <li key={pref.id} className="flex items-baseline gap-1.5">
+                          <span className="text-xs font-medium text-[var(--admin-text-muted)]">
+                            {ordinal(pref.preference_rank)}
+                          </span>
+                          <span>{pref.team_name}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </dd>
+                )}
+              </div>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-3 [&>div]:min-w-0">
+                <div>
+                  <dt className="text-xs text-[var(--admin-text-muted)]">School</dt>
+                  <dd className="text-sm text-[var(--admin-text)]">{application.school ?? "—"}</dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-xs text-[var(--admin-text-muted)]">School email</dt>
+                  <dd className="text-sm break-words text-[var(--admin-text)]">{application.schoolEmail ?? "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-[var(--admin-text-muted)]">Major</dt>
+                  <dd className="text-sm text-[var(--admin-text)]">{application.major ?? "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-[var(--admin-text-muted)]">Year of study</dt>
+                  <dd className="text-sm text-[var(--admin-text)]">{application.yearOfStudy ?? "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-[var(--admin-text-muted)]">GPA</dt>
+                  <dd className="text-sm text-[var(--admin-text)]">{application.gpa ?? "—"}</dd>
+                </div>
+              </dl>
+            </div>
+          </section>
         </div>
+
+        {/* Review column */}
+        <div className="flex flex-col gap-6 lg:sticky lg:top-4">
+          <section aria-labelledby="status-heading" className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
+            <h2 id="status-heading" className="mb-3 text-base font-medium text-[var(--admin-text)]">
+              Status
+            </h2>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="application-status-select" className="sr-only">
+                Application status
+              </label>
+              <Select value={status} onValueChange={(v) => v && setStatus(v as Application["status"])}>
+                <SelectTrigger id="application-status-select" className="w-full">
+                  {/* base-ui's SelectValue can't infer a plain-text label from a
+                      SelectItem whose children are JSX (the dot + label span
+                      below), it falls back to the raw enum value without this
+                      render-prop -- see Select.Value's `children` function form. */}
+                  <SelectValue>
+                    {() => (
+                      <span className="flex items-center gap-2">
+                        <StatusDot status={status} />
+                        {applicationStatusLabel(status)}
+                      </span>
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {APPLICATION_STATUSES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      <span className="flex items-center gap-2">
+                        <StatusDot status={s} />
+                        {applicationStatusLabel(s)}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button type="button" size="sm" disabled={statusPending || status === savedStatus} onClick={saveStatus}>
+                {statusPending ? "Saving..." : "Save status"}
+              </Button>
+              {statusError && (
+                <p role="alert" className="text-xs text-[var(--admin-danger)]">
+                  {statusError}
+                </p>
+              )}
+            </div>
+
+            <h3 className="mb-2 mt-4 text-sm font-medium text-[var(--admin-text)]">History</h3>
+            {statusHistory.length === 0 ? (
+              <p className="text-sm text-[var(--admin-text-muted)]">No status changes yet.</p>
+            ) : (
+              // Fixed height + scroll, not unbounded growth -- a busy
+              // application's history would otherwise keep pushing the
+              // rest of the page down every time a new entry is added.
+              // Newest first, since that's what a reviewer checking in on
+              // an application mid-review usually wants to see immediately.
+              <ul className="m-0 flex max-h-40 list-none flex-col gap-1 overflow-y-auto p-0 text-xs text-[var(--admin-text-muted)]">
+                {[...statusHistory].reverse().map((entry) => (
+                  <li key={entry.id}>
+                    {formatDateTime(entry.created_at)}:{" "}
+                    {entry.old_status ? `${applicationStatusLabel(entry.old_status)} → ` : ""}
+                    {applicationStatusLabel(entry.new_status)}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      </div>
+
+      {/* Reviewer notes, full width */}
+      <div className="mt-6 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
+        <ReviewerNotesThread
+          applicationId={application.id}
+          notes={reviewerNotes}
+          currentUserId={currentUserId}
+          currentUserRole={currentUserRole}
+        />
       </div>
     </div>
   );

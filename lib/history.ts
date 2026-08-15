@@ -8,6 +8,10 @@ export const actionLabels: Record<string, string> = {
   delete: "Deleted",
 };
 
+// Inspire Columbia is based in Columbia, SC -- every admin timestamp
+// (jobs, applications, reviewer notes) renders in America/New_York
+// regardless of the viewer's own device or a Vercel function's UTC clock,
+// rather than leaving it to whatever timezone happens to render it.
 export function formatDateTime(iso: string) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -15,6 +19,8 @@ export function formatDateTime(iso: string) {
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    timeZone: "America/New_York",
+    timeZoneName: "short",
   }).format(new Date(iso));
 }
 

@@ -10,8 +10,7 @@ import {
   JobPhotoUploadError,
   uploadJobPhoto,
 } from "@/lib/storage";
-import { sendEmail } from "@/lib/email/send";
-import { statusChangeEmail } from "@/lib/email/templates";
+import { isReviewerNoteEmpty, sanitizeReviewerNoteHtml } from "@/lib/reviewer-notes";
 
 type JobStatus = Database["public"]["Enums"]["job_status"];
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
@@ -382,10 +381,24 @@ export async function transitionStatus(id: string, status: JobStatus): Promise<{
 // Trusts the row's own storage_path rather than recomputing it from the
 // application/document-type pair -- looking it up by the document's own id
 // means this works the same way regardless of how that path was derived.
+//
+// The role check here is redundant with RLS (staff/admin-only select on
+// application_documents already blocks a member), but the spec calls for
+// enforcement in the server action itself too, not just the data layer --
+// so a future refactor that swaps in a different Supabase client factory
+// can't silently drop the restriction. Same reasoning applies to every
+// other applications-related action below.
 export async function getApplicationDocumentUrl(
   applicationDocumentId: string,
   mode: "preview" | "download" = "preview"
 ): Promise<{ url: string } | { error: string }> {
+  const { sessionClaims } = await auth();
+  const role = sessionClaims?.user_role as string | undefined;
+  // Generic message, doesn't distinguish "not authorized" from "not found"
+  // -- an applicant id or document id shouldn't be confirmable to exist by
+  // probing this action with the wrong role.
+  if (role !== "staff" && role !== "admin") return { error: "Document not found." };
+
   const supabase = createClerkSupabaseClient();
   const { data, error } = await supabase
     .from("application_documents")
@@ -404,37 +417,21 @@ export async function getApplicationDocumentUrl(
   });
 }
 
+// Status changes are internal only -- never emails or otherwise notifies
+// the applicant. Deliberately does not fetch first_name/email/job_id like
+// an earlier version of this function did, since that data was only ever
+// needed to build a notification that must not exist.
 export async function updateApplicationStatus(
   id: string,
   status: ApplicationStatus
 ): Promise<{ error: string } | null> {
+  const { sessionClaims } = await auth();
+  const role = sessionClaims?.user_role as string | undefined;
+  if (role !== "staff" && role !== "admin") return { error: "Not authorized." };
+
   const supabase = createClerkSupabaseClient();
-
-  // Fetched first so a staff member re-saving the same status never fires a
-  // duplicate notification, and so the notification has the applicant's
-  // name/email/job title without a second round trip after the update.
-  const { data: current } = await supabase
-    .from("applications")
-    .select("status, first_name, email, job_id")
-    .eq("id", id)
-    .single();
-
   const { error } = await supabase.from("applications").update({ status }).eq("id", id);
   if (error) return { error: error.message };
-
-  if (current && current.status !== status) {
-    const { data: job } = await supabase.from("jobs").select("title").eq("id", current.job_id).maybeSingle();
-    // Best-effort: a Resend outage must never turn a successful status
-    // update into a user-facing error.
-    try {
-      await sendEmail({
-        to: current.email,
-        ...statusChangeEmail(current.first_name, job?.title ?? "your position", status),
-      });
-    } catch {
-      // Swallowed, see comment above.
-    }
-  }
 
   revalidatePath("/admin/applications");
   revalidatePath(`/admin/applications/${id}`);
@@ -445,27 +442,88 @@ export async function updateApplicationStatus(
 // staff/admins can each leave their own note over an application's life
 // (see application_reviewer_notes' RLS in
 // supabase/migrations/20260814100000_application_reviewer_notes_log.sql).
-// Never triggers a status-change email, unlike updateApplicationStatus.
+// Sanitization happens here, server-side, before the row is ever written --
+// the client-side editor only constrains what a well-behaved browser
+// produces, a modified request could send anything.
 export async function addApplicationReviewerNote(
   applicationId: string,
-  note: string
+  noteHtml: string
 ): Promise<{ error: string } | null> {
-  const trimmed = note.trim();
-  if (!trimmed) return { error: "Note can't be empty." };
-
   const { userId, sessionClaims } = await auth();
-  if (!userId) return { error: "Not signed in." };
   const role = sessionClaims?.user_role as string | undefined;
+  if (!userId || (role !== "staff" && role !== "admin")) return { error: "Not authorized." };
+
+  const sanitized = sanitizeReviewerNoteHtml(noteHtml);
+  if (isReviewerNoteEmpty(sanitized)) return { error: "Note can't be empty." };
 
   const supabase = createClerkSupabaseClient();
   const { error } = await supabase.from("application_reviewer_notes").insert({
     application_id: applicationId,
     author_clerk_user_id: userId,
-    author_role: role ?? null,
-    note: trimmed,
+    author_role: role,
+    note: sanitized,
   });
   if (error) return { error: error.message };
 
   revalidatePath(`/admin/applications/${applicationId}`);
   return null;
+}
+
+// author_clerk_user_id / deleted-note guards live in the update_reviewer_note
+// RPC itself (SECURITY DEFINER, see
+// supabase/migrations/20260814180000_reviewer_notes_edit_delete_rpcs.sql),
+// not just here -- this role check is an early exit for a nicer error
+// message, the RPC is the actual enforcement.
+export async function editApplicationReviewerNote(
+  noteId: string,
+  applicationId: string,
+  noteHtml: string
+): Promise<{ error: string } | null> {
+  const { sessionClaims } = await auth();
+  const role = sessionClaims?.user_role as string | undefined;
+  if (role !== "staff" && role !== "admin") return { error: "Not authorized." };
+
+  const sanitized = sanitizeReviewerNoteHtml(noteHtml);
+  if (isReviewerNoteEmpty(sanitized)) return { error: "Note can't be empty." };
+
+  const supabase = createClerkSupabaseClient();
+  const { error } = await supabase.rpc("update_reviewer_note", {
+    p_note_id: noteId,
+    p_note: sanitized,
+  });
+  if (error) return { error: mapReviewerNoteRpcError(error.message) };
+
+  revalidatePath(`/admin/applications/${applicationId}`);
+  return null;
+}
+
+// Soft delete via the delete_reviewer_note RPC -- author can delete their
+// own note, admin can delete anyone's, enforced inside the RPC itself.
+export async function deleteApplicationReviewerNote(
+  noteId: string,
+  applicationId: string
+): Promise<{ error: string } | null> {
+  const { sessionClaims } = await auth();
+  const role = sessionClaims?.user_role as string | undefined;
+  if (role !== "staff" && role !== "admin") return { error: "Not authorized." };
+
+  const supabase = createClerkSupabaseClient();
+  const { error } = await supabase.rpc("delete_reviewer_note", { p_note_id: noteId });
+  if (error) return { error: mapReviewerNoteRpcError(error.message) };
+
+  revalidatePath(`/admin/applications/${applicationId}`);
+  return null;
+}
+
+// The RPCs raise plain-text exceptions (see the migration) that PostgREST
+// forwards as the error message verbatim -- mapped here to consistent,
+// user-facing copy rather than showing raw Postgres exception text.
+function mapReviewerNoteRpcError(message: string): string {
+  if (message.includes("cannot edit another reviewer")) return "You can only edit your own notes.";
+  if (message.includes("not authorized to delete")) return "You can only delete your own notes.";
+  if (message.includes("cannot edit a deleted note")) return "This note has already been deleted.";
+  if (message.includes("already deleted")) return "This note has already been deleted.";
+  if (message.includes("not found")) return "This note no longer exists.";
+  if (message.includes("not authorized")) return "Not authorized.";
+  return "Something went wrong. Please try again.";
 }

@@ -1,8 +1,3 @@
-import { applicationStatusLabel } from "@/lib/applications";
-import type { Database } from "@/lib/database.types";
-
-type ApplicationStatus = Database["public"]["Enums"]["application_status"];
-
 export type EmailTemplate = { subject: string; text: string; html: string };
 
 function htmlParagraphs(lines: string[]): string {
@@ -21,17 +16,10 @@ export function applicationConfirmationTemplateVariables(
   return { first_name: firstName, last_name: lastName };
 }
 
-export function statusChangeEmail(firstName: string, jobTitle: string, status: ApplicationStatus): EmailTemplate {
-  const label = applicationStatusLabel(status);
-  const subject = `Update on your ${jobTitle} application`;
-  const lines = [
-    `Hi ${firstName},`,
-    `Your application for ${jobTitle} has been updated to: ${label}.`,
-    "If you have any questions, just reply to this email.",
-  ];
-  return { subject, text: lines.join("\n\n"), html: htmlParagraphs(lines) };
-}
-
+// Deliberately no statusChangeEmail here -- status changes are internal
+// only and must never notify the applicant (see updateApplicationStatus in
+// app/admin/actions.ts and tests/rls/... asserting no email fires on a
+// status change).
 export function staffAlertEmail(applicantName: string, jobTitle: string): EmailTemplate {
   const subject = `New application: ${applicantName} for ${jobTitle}`;
   const lines = [

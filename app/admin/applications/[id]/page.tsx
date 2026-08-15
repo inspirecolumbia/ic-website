@@ -7,14 +7,17 @@ import ApplicationDetail from "@/components/admin/ApplicationDetail";
 
 export default async function ApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { sessionClaims } = await auth();
+  const { userId, sessionClaims } = await auth();
   const role = sessionClaims?.user_role as string | undefined;
   const canView = role === "staff" || role === "admin";
 
   if (!canView) {
+    // Doesn't distinguish a real application id from a fake one -- a
+    // member gets the same message either way, so this route can't be
+    // used to probe whether an id exists.
     return (
       <div>
-        <AdminTabs />
+        <AdminTabs role={role} />
         <p className="text-sm text-[var(--admin-text-muted)]">
           Only staff and admins can view applications.
         </p>
@@ -44,11 +47,11 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
       .select("*")
       .eq("application_id", id)
       .order("created_at"),
-    supabase
-      .from("application_reviewer_notes")
-      .select("*")
-      .eq("application_id", id)
-      .order("created_at"),
+    // Reads go through this RPC, not a direct select -- it's the only path
+    // that redacts a soft-deleted note's content and never returns who
+    // deleted it (see supabase/migrations/20260814180000_reviewer_notes_edit_delete_rpcs.sql).
+    // Direct SELECT on the table is revoked for authenticated entirely.
+    supabase.rpc("list_reviewer_notes", { p_application_id: id }),
   ]);
 
   if (!row) notFound();
@@ -68,7 +71,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
 
   return (
     <div>
-      <AdminTabs />
+      <AdminTabs role={role} />
       <ApplicationDetail
         application={applicationRowToApplication(row)}
         jobTitle={job?.title ?? "Deleted job"}
@@ -80,10 +83,15 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
         reviewerNotes={(reviewerNotes ?? []).map((note) => ({
           id: note.id,
           note: note.note,
+          isDeleted: note.is_deleted,
           createdAt: note.created_at,
+          updatedAt: note.updated_at,
+          deletedAt: note.deleted_at,
+          authorClerkUserId: note.author_clerk_user_id,
           authorName: authorNames.get(note.author_clerk_user_id) ?? "Deleted account",
-          authorRole: note.author_role,
         }))}
+        currentUserId={userId}
+        currentUserRole={role as "staff" | "admin"}
       />
     </div>
   );

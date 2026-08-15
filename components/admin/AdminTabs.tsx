@@ -6,13 +6,19 @@ import { cn } from "@/lib/utils";
 
 const tabs = [
   { href: "/admin/jobs", label: "Jobs" },
-  { href: "/admin/applications", label: "Applications" },
+  { href: "/admin/applications", label: "Applications", staffOnly: true },
   { href: "/admin/templates", label: "Templates" },
   { href: "/admin/history", label: "History" },
 ];
 
-export default function AdminTabs() {
+// role is optional (some pages haven't threaded it through) so the tab
+// still renders for those, but every page that gates real applicant data
+// should pass its own already-computed role here -- this is a UI nicety
+// (hiding a link a member can't use anyway), not the enforcement itself,
+// which lives server-side in each page/action/RPC.
+export default function AdminTabs({ role }: { role?: string }) {
   const pathname = usePathname();
+  const visibleTabs = tabs.filter((tab) => !tab.staffOnly || role === "staff" || role === "admin");
 
   return (
     <div className="mb-6 border-b">
@@ -23,7 +29,7 @@ export default function AdminTabs() {
         ← Dashboard
       </Link>
       <nav className="flex gap-4">
-        {tabs.map((tab) => {
+        {visibleTabs.map((tab) => {
           const active = pathname.startsWith(tab.href);
           return (
             <Link
