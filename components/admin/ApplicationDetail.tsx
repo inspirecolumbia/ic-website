@@ -218,12 +218,13 @@ export default function ApplicationDetail({
                 {screeningAnswers.map((answer) => (
                   <div key={answer.id} className="border-l-2 border-[var(--admin-border)] pl-3">
                     <dt className="text-sm font-medium text-[var(--admin-text)]">{answer.question}</dt>
-                    <dd className="mt-1 flex items-start gap-2 text-sm whitespace-pre-wrap text-[var(--admin-text-muted)]">
-                      <span>{answer.answer}</span>
-                      {YES_NO_QUESTIONS.has(answer.question) && (
-                        <span className="shrink-0 rounded border border-[var(--admin-border-strong)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--admin-text)]">
+                    <dd className="mt-1 text-sm whitespace-pre-wrap text-[var(--admin-text-muted)]">
+                      {YES_NO_QUESTIONS.has(answer.question) ? (
+                        <span className="inline-block rounded border border-[var(--admin-border-strong)] px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide text-[var(--admin-text)]">
                           {answer.answer}
                         </span>
+                      ) : (
+                        answer.answer
                       )}
                     </dd>
                   </div>
@@ -263,14 +264,14 @@ export default function ApplicationDetail({
                   </dd>
                 )}
               </div>
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-3 [&>div]:min-w-0">
                 <div>
                   <dt className="text-xs text-[var(--admin-text-muted)]">School</dt>
                   <dd className="text-sm text-[var(--admin-text)]">{application.school ?? "—"}</dd>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <dt className="text-xs text-[var(--admin-text-muted)]">School email</dt>
-                  <dd className="text-sm text-[var(--admin-text)]">{application.schoolEmail ?? "—"}</dd>
+                  <dd className="text-sm break-words text-[var(--admin-text)]">{application.schoolEmail ?? "—"}</dd>
                 </div>
                 <div>
                   <dt className="text-xs text-[var(--admin-text-muted)]">Major</dt>
@@ -339,8 +340,13 @@ export default function ApplicationDetail({
             {statusHistory.length === 0 ? (
               <p className="text-sm text-[var(--admin-text-muted)]">No status changes yet.</p>
             ) : (
-              <ul className="m-0 flex list-none flex-col gap-1 p-0 text-xs text-[var(--admin-text-muted)]">
-                {statusHistory.map((entry) => (
+              // Fixed height + scroll, not unbounded growth -- a busy
+              // application's history would otherwise keep pushing the
+              // rest of the page down every time a new entry is added.
+              // Newest first, since that's what a reviewer checking in on
+              // an application mid-review usually wants to see immediately.
+              <ul className="m-0 flex max-h-40 list-none flex-col gap-1 overflow-y-auto p-0 text-xs text-[var(--admin-text-muted)]">
+                {[...statusHistory].reverse().map((entry) => (
                   <li key={entry.id}>
                     {formatDateTime(entry.created_at)}:{" "}
                     {entry.old_status ? `${applicationStatusLabel(entry.old_status)} → ` : ""}
