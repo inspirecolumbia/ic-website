@@ -22,7 +22,10 @@ const COLUMNS: { key: keyof ReturnType<typeof applicationsToExportRows>[number];
   { key: "jobTitle", header: "Job", width: 24 },
   { key: "status", header: "Status", width: 16 },
   { key: "submittedAt", header: "Submitted", width: 20 },
-  { key: "screeningAnswers", header: "Screening Answers", width: 60 },
+  { key: "livesNearColumbia", header: "Lives Near Columbia, SC", width: 18 },
+  { key: "authorizedToWork", header: "Authorized to Work in the US", width: 18 },
+  { key: "needsVisaSponsorship", header: "Needs Visa Sponsorship", width: 18 },
+  { key: "interestInJoining", header: "What Appeals to Them", width: 50 },
 ];
 
 export async function GET(request: NextRequest) {
