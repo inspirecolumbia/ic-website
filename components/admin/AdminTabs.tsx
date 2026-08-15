@@ -9,6 +9,7 @@ const tabs = [
   { href: "/admin/applications", label: "Applications", staffOnly: true },
   { href: "/admin/templates", label: "Templates" },
   { href: "/admin/history", label: "History" },
+  { href: "/admin/users", label: "Users", adminOnly: true },
 ];
 
 // role is optional (some pages haven't threaded it through) so the tab
@@ -18,7 +19,11 @@ const tabs = [
 // which lives server-side in each page/action/RPC.
 export default function AdminTabs({ role }: { role?: string }) {
   const pathname = usePathname();
-  const visibleTabs = tabs.filter((tab) => !tab.staffOnly || role === "staff" || role === "admin");
+  const visibleTabs = tabs.filter((tab) => {
+    if (tab.adminOnly) return role === "admin";
+    if (tab.staffOnly) return role === "staff" || role === "admin";
+    return true;
+  });
 
   return (
     <div className="mb-6 border-b">
