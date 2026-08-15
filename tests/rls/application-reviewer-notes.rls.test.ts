@@ -305,6 +305,21 @@ describe("update_reviewer_note", () => {
     });
   });
 
+  it("saving the same content back does not bump updated_at", async () => {
+    await withTransaction(async (client) => {
+      const jobId = await seedJob(client);
+      const appId = await seedApplication(client, jobId);
+      const noteId = await seedNote(client, appId, "user_test_staff", "unchanged");
+
+      await impersonate(client, asStaff());
+      await client.query("select public.update_reviewer_note($1, $2)", [noteId, "unchanged"]);
+
+      const rows = await listNotes(client, appId);
+      expect(rows[0].note).toBe("unchanged");
+      expect(rows[0].updated_at).toEqual(rows[0].created_at);
+    });
+  });
+
   it("staff cannot edit another reviewer's note", async () => {
     await withTransaction(async (client) => {
       const jobId = await seedJob(client);

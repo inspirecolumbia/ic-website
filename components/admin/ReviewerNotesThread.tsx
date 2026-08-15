@@ -114,6 +114,13 @@ function NoteRow({
     setEditing(true);
   }
 
+  // Save changes is disabled below when editHtml matches the note's current
+  // content, so this normally only fires on a real change -- but the
+  // authoritative guard against a no-op edit showing as "(Edited)" is
+  // server-side, in update_reviewer_note's own updated_at comparison (see
+  // supabase/migrations/20260815120000_reviewer_note_edit_noop_no_bump.sql),
+  // since the disabled state here is just a UX nicety a modified request
+  // could bypass entirely.
   function saveEdit() {
     setError(null);
     startTransition(() => {
@@ -151,7 +158,7 @@ function NoteRow({
           <span>{formatDateTime(note.createdAt)}</span>
         </div>
         <p className="m-0 mt-1.5 text-sm italic text-[var(--admin-text-muted)]">
-          This note was deleted{note.deletedAt ? ` on ${formatDateTime(note.deletedAt)}` : ""}.
+          This note was deleted.
         </p>
       </li>
     );
@@ -164,7 +171,7 @@ function NoteRow({
           <NoteAvatar name={note.authorName} />
           <span className="font-medium text-[var(--admin-text)]">{note.authorName}</span>
           <span>{formatDateTime(note.createdAt)}</span>
-          {note.updatedAt !== note.createdAt && <span>Edited {formatDateTime(note.updatedAt)}</span>}
+          {note.updatedAt !== note.createdAt && <span>(Edited)</span>}
         </div>
         {hasMenu && !editing && (
           <DropdownMenu>
@@ -202,7 +209,12 @@ function NoteRow({
             disabled={pending}
           />
           <div className="flex items-center gap-2">
-            <Button type="button" size="sm" disabled={pending || isReviewerNoteEmpty(editHtml)} onClick={saveEdit}>
+            <Button
+              type="button"
+              size="sm"
+              disabled={pending || isReviewerNoteEmpty(editHtml) || editHtml === (note.note ?? "")}
+              onClick={saveEdit}
+            >
               {pending ? "Saving..." : "Save changes"}
             </Button>
             <Button
