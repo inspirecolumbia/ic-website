@@ -56,20 +56,44 @@ export type EmailTemplateVariable = {
   fallbackValue: string | number | null;
 };
 
-export async function getEmailTemplateVariables(templateId: string): Promise<EmailTemplateVariable[]> {
+export type EmailTemplateDetail = {
+  id: string;
+  name: string;
+  subject: string | null;
+  html: string;
+  text: string | null;
+  variables: EmailTemplateVariable[];
+};
+
+// One call gets both the variable schema (to render the compose form) and
+// the rendered subject/html/text (to preview the template natively instead
+// of sending staff to Resend's dashboard just to see what it looks like).
+export async function getEmailTemplateDetail(templateId: string): Promise<EmailTemplateDetail> {
   const { data, error } = await getClient().templates.get(templateId);
   if (error) throw new Error(error.message);
-  return (data?.variables ?? []).map((variable) => ({
-    key: variable.key,
-    type: variable.type,
-    fallbackValue: variable.fallback_value,
-  }));
+  if (!data) throw new Error("Template not found.");
+  return {
+    id: data.id,
+    name: data.name,
+    subject: data.subject,
+    html: data.html,
+    text: data.text,
+    variables: (data.variables ?? []).map((variable) => ({
+      key: variable.key,
+      type: variable.type,
+      fallbackValue: variable.fallback_value,
+    })),
+  };
 }
 
 export type BatchTemplateEmailInput = {
   to: string;
   templateId: string;
   variables: Record<string, string | number>;
+  // ISO 8601 -- omit to send immediately. See lib/mass-email.ts's
+  // isValidScheduledAt for the 30-day-out limit this is validated against
+  // before it ever reaches here.
+  scheduledAt?: string;
 };
 
 export type BatchSendResult = {
@@ -94,6 +118,7 @@ export async function sendBatchTemplateEmails(items: BatchTemplateEmailInput[]):
       from,
       to: item.to,
       template: { id: item.templateId, variables: item.variables },
+      ...(item.scheduledAt ? { scheduledAt: item.scheduledAt } : {}),
     })),
     { batchValidation: "permissive" }
   );

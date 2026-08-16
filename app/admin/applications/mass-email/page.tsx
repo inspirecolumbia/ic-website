@@ -37,7 +37,7 @@ export default async function MassEmailPage() {
         Email a group of applicants by status and job, plus any addresses that aren&apos;t in the
         system. Content comes from a published Resend template.
       </p>
-      <MassEmailComposer jobs={jobs ?? []} templates={templates} />
+      <MassEmailComposer jobs={jobs ?? []} templates={templates} fromAddress={process.env.RESEND_FROM_ADDRESS ?? null} />
     </div>
   );
 }

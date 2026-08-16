@@ -4,19 +4,21 @@ import { auth } from "@clerk/nextjs/server";
 import { createClerkSupabaseClient } from "@/lib/supabase/clerk";
 import type { Database } from "@/lib/database.types";
 import {
-  getEmailTemplateVariables,
+  getEmailTemplateDetail,
   listPublishedEmailTemplates,
   sendBatchTemplateEmails,
+  type EmailTemplateDetail,
   type EmailTemplateSummary,
-  type EmailTemplateVariable,
 } from "@/lib/email/send";
 import {
   buildMassEmailRecipients,
   chunkRecipients,
+  isValidScheduledAt,
   MASS_EMAIL_RECIPIENT_CAP,
   parseAdditionalEmails,
   resolveRecipientVariables,
   type MassEmailApplicant,
+  type MassEmailRecipient,
 } from "@/lib/mass-email";
 
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
@@ -39,16 +41,16 @@ export async function listMassEmailTemplates(): Promise<{ templates: EmailTempla
   }
 }
 
-export async function getMassEmailTemplateVariables(
+export async function getMassEmailTemplateDetail(
   templateId: string
-): Promise<{ variables: EmailTemplateVariable[] } | { error: string }> {
+): Promise<{ template: EmailTemplateDetail } | { error: string }> {
   const role = await requireStaffOrAdmin();
   if (typeof role !== "string") return role;
 
   try {
-    return { variables: await getEmailTemplateVariables(templateId) };
+    return { template: await getEmailTemplateDetail(templateId) };
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "Failed to load template variables." };
+    return { error: err instanceof Error ? err.message : "Failed to load the template." };
   }
 }
 
@@ -79,20 +81,29 @@ async function resolveApplicantRecipients(
   return { applicants, additionalEmails, invalidEmails };
 }
 
-export async function previewMassEmailRecipients(
+export async function listMassEmailRecipients(
   filter: RecipientFilter
-): Promise<{ count: number; invalidEmails: string[] } | { error: string }> {
+): Promise<{ recipients: MassEmailRecipient[]; invalidEmails: string[] } | { error: string }> {
   const role = await requireStaffOrAdmin();
   if (typeof role !== "string") return role;
 
   const { applicants, additionalEmails, invalidEmails } = await resolveApplicantRecipients(filter);
   const recipients = buildMassEmailRecipients(applicants, additionalEmails);
-  return { count: recipients.length, invalidEmails };
+
+  if (recipients.length > MASS_EMAIL_RECIPIENT_CAP) {
+    return {
+      error: `This filter matches ${recipients.length} people, above the ${MASS_EMAIL_RECIPIENT_CAP} cap for a single send. Narrow the filter.`,
+    };
+  }
+  return { recipients, invalidEmails };
 }
 
 export type SendMassEmailInput = RecipientFilter & {
+  selectedEmails: string[];
   templateId: string;
   variables: Record<string, string>;
+  // ISO 8601, or null to send immediately.
+  scheduledAt: string | null;
 };
 
 export type SendMassEmailResult = {
@@ -107,18 +118,36 @@ export async function sendMassEmail(
   const role = await requireStaffOrAdmin();
   if (typeof role !== "string") return role;
 
-  const { applicants, additionalEmails, invalidEmails } = await resolveApplicantRecipients(input);
-  const recipients = buildMassEmailRecipients(applicants, additionalEmails);
+  if (input.scheduledAt && !isValidScheduledAt(input.scheduledAt)) {
+    return { error: "Choose a scheduled time in the future, no more than 30 days out." };
+  }
 
-  if (recipients.length === 0) return { error: "No recipients matched this filter." };
+  let template: EmailTemplateDetail;
+  try {
+    template = await getEmailTemplateDetail(input.templateId);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to load the template." };
+  }
+
+  const { applicants, additionalEmails, invalidEmails } = await resolveApplicantRecipients(input);
+  const pool = buildMassEmailRecipients(applicants, additionalEmails);
+
+  // Recomputed from the same filter/additional-emails inputs a legitimate
+  // list call would have produced, then narrowed to what staff actually
+  // ticked -- never trusts a client-supplied recipient outside that pool.
+  const selected = new Set(input.selectedEmails.map((e) => e.trim().toLowerCase()));
+  const recipients = pool.filter((r) => selected.has(r.to));
+
+  if (recipients.length === 0) return { error: "No recipients selected." };
   if (recipients.length > MASS_EMAIL_RECIPIENT_CAP) {
-    return { error: `This would email ${recipients.length} people, above the ${MASS_EMAIL_RECIPIENT_CAP} cap for a single send. Narrow the filter.` };
+    return { error: `This would email ${recipients.length} people, above the ${MASS_EMAIL_RECIPIENT_CAP} cap for a single send.` };
   }
 
   const items = recipients.map((recipient) => ({
     to: recipient.to,
     templateId: input.templateId,
-    variables: resolveRecipientVariables(recipient, input.variables),
+    variables: resolveRecipientVariables(recipient, template.variables, input.variables),
+    ...(input.scheduledAt ? { scheduledAt: input.scheduledAt } : {}),
   }));
 
   let sentCount = 0;
