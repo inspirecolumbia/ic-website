@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronUp, ChevronDown, ArrowUpDown, FileSpreadsheet, X } from "lucide-react";
+import { ChevronUp, ChevronDown, ArrowUpDown, FileSpreadsheet, Mail, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -207,8 +207,15 @@ export default function ApplicationsManager({
           </Button>
         )}
         <Link
-          href={jobFilter === "all" ? "/admin/applications/export" : `/admin/applications/export?job=${jobFilter}`}
+          href="/admin/applications/mass-email"
           className="ml-auto inline-flex items-center gap-1.5 text-sm text-[var(--admin-brand)] underline-offset-2 hover:underline"
+        >
+          <Mail className="size-4" />
+          Mass email
+        </Link>
+        <Link
+          href={jobFilter === "all" ? "/admin/applications/export" : `/admin/applications/export?job=${jobFilter}`}
+          className="inline-flex items-center gap-1.5 text-sm text-[var(--admin-brand)] underline-offset-2 hover:underline"
         >
           <FileSpreadsheet className="size-4" />
           {jobFilter === "all" ? "Export .xlsx" : "Export .xlsx (this job)"}
