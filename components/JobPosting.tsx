@@ -73,7 +73,7 @@ function ApplyButton({ jobTitle, jobSlug, applyUrl }: { jobTitle: string; jobSlu
   }
 
   return (
-    <Link href={`/jobs/${jobSlug}/apply`} className={applyButtonClassName}>
+    <Link href={`/positions/${jobSlug}/apply`} className={applyButtonClassName}>
       Apply now
     </Link>
   );
@@ -102,8 +102,8 @@ export default function JobPosting({ job }: { job: Job }) {
                     /
                   </li>
                   <li>
-                    <Link href="/jobs" className="no-underline hover:underline">
-                      Jobs
+                    <Link href="/positions" className="no-underline hover:underline">
+                      Positions
                     </Link>
                   </li>
                   <li aria-hidden="true" className="mx-2">
@@ -183,7 +183,7 @@ export default function JobPosting({ job }: { job: Job }) {
               See every open role at Inspire Columbia.
             </p>
             <Link
-              href="/jobs"
+              href="/positions"
               className="font-semibold text-[var(--brand)] no-underline hover:underline"
             >
               View all open roles

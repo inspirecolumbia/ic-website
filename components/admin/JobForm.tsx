@@ -180,7 +180,7 @@ export default function JobForm({
               }}
             />
             <p className="text-sm text-muted-foreground">
-              inspirecolumbia.org/jobs/<span className="font-medium text-foreground">{slug || "..."}</span>
+              inspirecolumbia.org/positions/<span className="font-medium text-foreground">{slug || "..."}</span>
             </p>
           </div>
         </div>

@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Open Roles | Inspire Columbia",
     description: "See every open role at Inspire Columbia, a student-led nonprofit in Columbia, South Carolina.",
-    url: "https://inspirecolumbia.org/jobs",
+    url: "https://inspirecolumbia.org/positions",
   },
   twitter: {
     title: "Open Roles | Inspire Columbia",
@@ -33,7 +33,7 @@ export default async function JobsIndexPage() {
 
   return (
     <>
-      <SiteHeader currentPath="/jobs" />
+      <SiteHeader currentPath="/positions" />
       <main className="text-[var(--ink)]">
         <section className="bg-[var(--surface-blue)] py-14 md:py-[4.5rem]">
           <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
@@ -65,7 +65,7 @@ export default async function JobsIndexPage() {
                 {openRoles.map((job) => (
                   <li key={job.slug}>
                     <Link
-                      href={`/jobs/${job.slug}`}
+                      href={`/positions/${job.slug}`}
                       className="block h-full rounded-[10px] border border-[var(--line)] bg-[var(--card-public)] p-6 no-underline transition-all duration-150 hover:border-[var(--brand)] hover:shadow-[0_8px_24px_rgba(29,78,216,0.12)]"
                     >
                       <p className="m-0 text-sm font-semibold uppercase tracking-[0.08em] text-[var(--brand)]">

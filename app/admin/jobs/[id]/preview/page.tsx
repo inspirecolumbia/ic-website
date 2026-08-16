@@ -20,7 +20,7 @@ export default async function PreviewJobPage({ params }: { params: Promise<{ id:
           ← Back to jobs
         </Link>
       </div>
-      <SiteHeader currentPath={`/jobs/${job.slug}`} />
+      <SiteHeader currentPath={`/positions/${job.slug}`} />
       <JobPosting job={jobRowToJob(job)} />
     </>
   );
