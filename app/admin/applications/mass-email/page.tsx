@@ -2,7 +2,9 @@ import { auth } from "@clerk/nextjs/server";
 import { createClerkSupabaseClient } from "@/lib/supabase/clerk";
 import AdminTabs from "@/components/admin/AdminTabs";
 import MassEmailComposer from "@/components/admin/MassEmailComposer";
+import Link from "next/link";
 import { listPublishedEmailTemplates } from "@/lib/email/send";
+import { getResendFromAddress } from "@/lib/settings";
 
 export default async function MassEmailPage() {
   const { sessionClaims } = await auth();
@@ -22,11 +24,12 @@ export default async function MassEmailPage() {
   }
 
   const supabase = createClerkSupabaseClient();
-  const [{ data: jobs }, templates] = await Promise.all([
+  const [{ data: jobs }, templates, fromAddress] = await Promise.all([
     supabase.from("jobs").select("id, title").order("title"),
     // A missing/misconfigured Resend API key shouldn't 500 the whole page --
     // it should just leave the template picker empty with an explanation.
     listPublishedEmailTemplates().catch(() => []),
+    getResendFromAddress(),
   ]);
 
   return (
@@ -36,8 +39,17 @@ export default async function MassEmailPage() {
       <p className="mb-6 text-sm text-[var(--admin-text-muted)]">
         Email a group of applicants by status and job, plus any addresses that aren&apos;t in the
         system. Content comes from a published Resend template.
+        {role === "admin" && (
+          <>
+            {" "}
+            <Link href="/admin/settings" className="text-[var(--admin-brand)] underline-offset-2 hover:underline">
+              Change the sending address
+            </Link>
+            .
+          </>
+        )}
       </p>
-      <MassEmailComposer jobs={jobs ?? []} templates={templates} fromAddress={process.env.RESEND_FROM_ADDRESS ?? null} />
+      <MassEmailComposer jobs={jobs ?? []} templates={templates} fromAddress={fromAddress} />
     </div>
   );
 }

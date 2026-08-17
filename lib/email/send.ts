@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { getResendFromAddress } from "@/lib/settings";
 
 export type EmailInput = {
   to: string;
@@ -22,8 +23,8 @@ function getClient(): Resend {
 // handling elsewhere in this codebase. This function itself stays honest
 // about failures (it throws), the swallowing is the caller's job.
 export async function sendEmail(input: EmailInput): Promise<void> {
-  const from = process.env.RESEND_FROM_ADDRESS;
-  if (!from) throw new Error("RESEND_FROM_ADDRESS is not configured.");
+  const from = await getResendFromAddress();
+  if (!from) throw new Error("No from address is configured (set it in Admin > Settings).");
 
   const { error } = await getClient().emails.send({
     from,
@@ -109,8 +110,8 @@ export type BatchSendResult = {
 // behavior is "if any email within the payload is invalid, the entire
 // request fails."
 export async function sendBatchTemplateEmails(items: BatchTemplateEmailInput[]): Promise<BatchSendResult> {
-  const from = process.env.RESEND_FROM_ADDRESS;
-  if (!from) throw new Error("RESEND_FROM_ADDRESS is not configured.");
+  const from = await getResendFromAddress();
+  if (!from) throw new Error("No from address is configured (set it in Admin > Settings).");
   if (items.length === 0) return { sentCount: 0, failed: [] };
 
   const { data, error } = await getClient().batch.send<{ batchValidation: "permissive" }>(
@@ -139,8 +140,8 @@ export type TemplateEmailInput = {
 // `template` with `html`/`text`/`react`, so this is a separate call rather
 // than an extra field on sendEmail's input.
 export async function sendTemplateEmail(input: TemplateEmailInput): Promise<void> {
-  const from = process.env.RESEND_FROM_ADDRESS;
-  if (!from) throw new Error("RESEND_FROM_ADDRESS is not configured.");
+  const from = await getResendFromAddress();
+  if (!from) throw new Error("No from address is configured (set it in Admin > Settings).");
 
   const { error } = await getClient().emails.send({
     from,
