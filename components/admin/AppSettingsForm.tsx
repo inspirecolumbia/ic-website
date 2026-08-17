@@ -4,6 +4,16 @@ import { useEffect, useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { updateResendFromAddress } from "@/app/admin/settings/actions";
 
 export default function AppSettingsForm({ initialFromAddress }: { initialFromAddress: string }) {
@@ -11,6 +21,7 @@ export default function AppSettingsForm({ initialFromAddress }: { initialFromAdd
   const [pending, startTransition] = useTransition();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (!successMessage) return;
@@ -18,10 +29,11 @@ export default function AppSettingsForm({ initialFromAddress }: { initialFromAdd
     return () => clearTimeout(timeout);
   }, [successMessage]);
 
-  function save() {
+  function confirmedSave() {
     setError(null);
     startTransition(async () => {
       const res = await updateResendFromAddress(value);
+      setConfirmOpen(false);
       if (res && "error" in res) {
         setError(res.error);
         return;
@@ -65,11 +77,33 @@ export default function AppSettingsForm({ initialFromAddress }: { initialFromAdd
           </p>
         </div>
         <div>
-          <Button type="button" onClick={save} disabled={pending || value.trim() === initialFromAddress}>
+          <Button
+            type="button"
+            onClick={() => setConfirmOpen(true)}
+            disabled={pending || value.trim() === initialFromAddress}
+          >
             {pending ? "Saving..." : "Save"}
           </Button>
         </div>
       </fieldset>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change the from address?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Every email this site sends through Resend, applicant confirmations, staff alerts,
+              and mass emails, will send from &quot;{value}&quot; instead of the current address.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={pending} onClick={confirmedSave}>
+              {pending ? "Saving..." : "Save"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -11,6 +11,8 @@ import {
   uploadJobPhoto,
 } from "@/lib/storage";
 import { isReviewerNoteEmpty, sanitizeReviewerNoteHtml } from "@/lib/reviewer-notes";
+import { getEmailTemplateDetail, sendTemplateEmail, type EmailTemplateDetail } from "@/lib/email/send";
+import { resolveRecipientVariables, type MassEmailRecipient } from "@/lib/mass-email";
 
 type JobStatus = Database["public"]["Enums"]["job_status"];
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
@@ -435,6 +437,56 @@ export async function updateApplicationStatus(
 
   revalidatePath("/admin/applications");
   revalidatePath(`/admin/applications/${id}`);
+  return null;
+}
+
+// Sends one Resend template email to exactly the applicant this row already
+// is -- a lighter, single-recipient sibling of the mass-email tool
+// (app/admin/applications/mass-email/actions.ts) for "just email this one
+// person" from their detail page, without navigating away to build a filter.
+// The email/name come from the application row itself (trusted, already
+// staff/admin-gated), not from client input, so there's no pool to
+// recompute the way mass-email's sendMassEmail has to.
+export async function sendApplicantEmail(
+  applicationId: string,
+  templateId: string,
+  variables: Record<string, string>
+): Promise<{ error: string } | null> {
+  const { sessionClaims } = await auth();
+  const role = sessionClaims?.user_role as string | undefined;
+  if (role !== "staff" && role !== "admin") return { error: "Not authorized." };
+
+  const supabase = createClerkSupabaseClient();
+  const { data: application, error: fetchError } = await supabase
+    .from("applications")
+    .select("email, first_name, last_name")
+    .eq("id", applicationId)
+    .single();
+  if (fetchError || !application) return { error: "Application not found." };
+
+  let template: EmailTemplateDetail;
+  try {
+    template = await getEmailTemplateDetail(templateId);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to load the template." };
+  }
+
+  const recipient: MassEmailRecipient = {
+    to: application.email,
+    firstName: application.first_name,
+    lastName: application.last_name,
+  };
+
+  try {
+    await sendTemplateEmail({
+      to: recipient.to,
+      templateId,
+      variables: resolveRecipientVariables(recipient, template.variables, variables),
+    });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to send." };
+  }
+
   return null;
 }
 

@@ -12,8 +12,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import DocumentViewer from "@/components/admin/DocumentViewer";
 import ReviewerNotesThread, { type ReviewerNoteEntry } from "@/components/admin/ReviewerNotesThread";
+import EmailApplicantDialog from "@/components/admin/EmailApplicantDialog";
 import { APPLICATION_STATUSES, applicationStatusLabel, ordinal, type Application } from "@/lib/applications";
 import { SCREENING_QUESTIONS } from "@/lib/screening";
 import { formatDateTime } from "@/lib/history";
@@ -120,6 +131,8 @@ export default function ApplicationDetail({
   const [statusPending, startStatusTransition] = useTransition();
   const [statusError, setStatusError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [confirmStatusOpen, setConfirmStatusOpen] = useState(false);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!successMessage) return;
@@ -127,10 +140,11 @@ export default function ApplicationDetail({
     return () => clearTimeout(timeout);
   }, [successMessage]);
 
-  function saveStatus() {
+  function confirmedSaveStatus() {
     setStatusError(null);
     startStatusTransition(() => {
       updateApplicationStatus(application.id, status).then((result) => {
+        setConfirmStatusOpen(false);
         if (result && "error" in result) {
           setStatusError(result.error);
         } else {
@@ -326,7 +340,12 @@ export default function ApplicationDetail({
                   ))}
                 </SelectContent>
               </Select>
-              <Button type="button" size="sm" disabled={statusPending || status === savedStatus} onClick={saveStatus}>
+              <Button
+                type="button"
+                size="sm"
+                disabled={statusPending || status === savedStatus}
+                onClick={() => setConfirmStatusOpen(true)}
+              >
                 {statusPending ? "Saving..." : "Save status"}
               </Button>
               {statusError && (
@@ -334,7 +353,35 @@ export default function ApplicationDetail({
                   {statusError}
                 </p>
               )}
+              <Button type="button" variant="outline" size="sm" onClick={() => setEmailDialogOpen(true)}>
+                Email applicant
+              </Button>
             </div>
+
+            <AlertDialog open={confirmStatusOpen} onOpenChange={setConfirmStatusOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Change status?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This changes the application status from {applicationStatusLabel(savedStatus)} to{" "}
+                    {applicationStatusLabel(status)}. This is internal only and never emails the applicant.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={statusPending}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction disabled={statusPending} onClick={confirmedSaveStatus}>
+                    {statusPending ? "Saving..." : "Save status"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <EmailApplicantDialog
+              open={emailDialogOpen}
+              onOpenChange={setEmailDialogOpen}
+              applicationId={application.id}
+              applicantName={`${application.firstName} ${application.lastName}`}
+            />
 
             <h3 className="mb-2 mt-4 text-sm font-medium text-[var(--admin-text)]">History</h3>
             {statusHistory.length === 0 ? (

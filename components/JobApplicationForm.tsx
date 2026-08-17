@@ -22,6 +22,7 @@ import {
   SCREENING_QUESTIONS,
   TEAM_6_PARENT_TITLE,
   TEAM_6_SUB_TRACKS,
+  TEAM_DESCRIPTIONS,
   YEAR_OF_STUDY_OPTIONS,
   availableTeams,
 } from "@/lib/screening";
@@ -475,6 +476,32 @@ export default function JobApplicationForm({
             </FormSection>
 
             <FormSection title="Team preferences">
+              <div className="mb-6 flex flex-col gap-4">
+                {TEAM_DESCRIPTIONS.map((team) => (
+                  <div key={team.title}>
+                    <p className="m-0 text-sm font-semibold text-[var(--ink)]">{team.title}</p>
+                    <p className="mt-1 mb-0 text-sm text-[var(--ink-muted)]">{team.description}</p>
+                    {team.subTracks && (
+                      <div className="mt-2 flex flex-col gap-2 border-l-2 border-[var(--line)] pl-3">
+                        {team.subTracks.map((subTrack) => (
+                          <div key={subTrack.title}>
+                            <p className="m-0 text-sm font-semibold text-[var(--ink)]">{subTrack.title}</p>
+                            <p className="mt-1 mb-0 text-sm text-[var(--ink-muted)]">{subTrack.description}</p>
+                            {subTrack.items && (
+                              <ul className="mt-1 mb-0 list-disc pl-5 text-sm text-[var(--ink-muted)]">
+                                {subTrack.items.map((item) => (
+                                  <li key={item}>{item}</li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
               <div className="rounded-md border-[var(--line)]">
                 <p className="mb-4 text-sm text-[var(--ink-muted)]">
                   Rank 3 teams in order of preference. All three choices are required, and each
