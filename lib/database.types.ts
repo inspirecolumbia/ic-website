@@ -34,6 +34,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          id: number
+          resend_from_address: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          resend_from_address?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          resend_from_address?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       application_documents: {
         Row: {
           application_id: string

@@ -10,6 +10,7 @@ const tabs = [
   { href: "/admin/templates", label: "Templates" },
   { href: "/admin/history", label: "History" },
   { href: "/admin/users", label: "Users", adminOnly: true },
+  { href: "/admin/settings", label: "Settings", adminOnly: true },
 ];
 
 // role is optional (some pages haven't threaded it through) so the tab
