@@ -28,11 +28,13 @@ async function submitViaRpc(client: PoolClient, jobId: string) {
   const appId = randomUUID();
   await client.query(
     `select public.submit_application(
-       $1::uuid, $2::uuid, 'Ada', 'Lovelace', 'ada@example.com', null,
-       'ada@school.edu', 'Test University', 'Computer Science', 'Junior', null,
+       $1::uuid, $2::uuid, 'Ada', 'Lovelace', 'ada@example.com', '8035550100',
+       'ada@email.sc.edu', 'University of South Carolina, Columbia', 'Computer Science', 'Junior', null,
        '[{"documentType":"resume","fileName":"r.pdf","storagePath":"applications/x/resume.pdf"},
          {"documentType":"transcript","fileName":"t.pdf","storagePath":"applications/x/transcript.pdf"}]'::jsonb,
-       '[{"teamName":"Production and Operations","rank":1}]'::jsonb,
+       '[{"teamName":"Nonprofit Finances and Legal","rank":1},
+         {"teamName":"Technology and Web Development","rank":2},
+         {"teamName":"Production","rank":3}]'::jsonb,
        '[]'::jsonb
      )`,
     [appId, jobId]

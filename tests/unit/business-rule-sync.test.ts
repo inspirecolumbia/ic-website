@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EMAIL_PATTERN, PHONE_PATTERN } from "@/lib/applications";
-import { SCHOOL_EMAIL_DOMAINS, SCREENING_QUESTIONS, TEAMS } from "@/lib/screening";
+import { SCHOOL_EMAIL_DOMAINS, SCHOOLS, SCREENING_QUESTIONS, TEAMS } from "@/lib/screening";
 
 // Static drift-guard, not a live check: the submit_application RPC (see
 // supabase/migrations/20260810150000_submit_application_rpc_phone_and_school_email_validation.sql)
@@ -16,9 +16,10 @@ const SQL_VALID_TEAMS = [
   "Nonprofit Finances and Legal",
   "Technology and Web Development",
   "Marketing and Press Strategy",
-  "Sponsorships, Corporate Partnerships, and Fundraising",
+  "Sponsorships and Corporate Partnerships",
   "Speaker Curation and Mentorship",
-  "Production and Operations",
+  "Production",
+  "Logistics & Operations",
 ];
 
 // Keep in sync with the RPC's v_yes_no_questions array.
@@ -66,5 +67,9 @@ describe("TS/SQL business-rule literal sync", () => {
 
   it("the RPC's school email domain map matches lib/screening.ts's SCHOOL_EMAIL_DOMAINS", () => {
     expect(SCHOOL_EMAIL_DOMAINS).toEqual(SQL_SCHOOL_EMAIL_DOMAINS);
+  });
+
+  it("lib/screening.ts's SCHOOLS matches the RPC's college whitelist (SCHOOL_EMAIL_DOMAINS' keys)", () => {
+    expect([...SCHOOLS].sort()).toEqual(Object.keys(SQL_SCHOOL_EMAIL_DOMAINS).sort());
   });
 });

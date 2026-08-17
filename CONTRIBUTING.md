@@ -8,6 +8,8 @@ This is the website for Inspire Columbia, a Next.js app with a Supabase database
   - [Environment setup](#environment-setup)
 - [How to contribute code](#how-to-contribute-code)
 - [Common commands](#common-commands)
+- [Testing](#testing)
+  - [Setting up the local Supabase stack](#setting-up-the-local-supabase-stack)
 - [Database migrations](#database-migrations)
 
 ## Getting started
@@ -66,11 +68,42 @@ Specialized, only relevant if you're touching the database schema:
 
 - `supabase start` / `supabase stop`: starts or stops a local Postgres/Supabase stack, so you can test migrations without touching the shared dev project
 - `npm run test:rls`: database permission tests. Requires that local stack to be running (`supabase start` first). Not run in CI yet.
+- `npm run test:e2e`: browser tests that run against the local Supabase stack. Also requires the local stack to be running first. Not run in CI yet.
 - `npm run types:gen`: regenerates `lib/database.types.ts` from the schema after a migration change. Run this any time you add a migration. Never hand-edit that file directly.
+
+See [Testing](#testing) below for what each test command actually does and how to set up the local stack the first time.
+
+## Testing
+
+There are three kinds of tests in this repo:
+
+- **Unit tests** (`npm run test:unit`). Test plain TypeScript functions, like form validation. No database needed. These run automatically in CI on every PR.
+- **RLS tests** (`npm run test:rls`). Test database permissions, like confirming a regular visitor can't read applicant data but staff can. Needs the local Supabase stack running (see below). Not run in CI yet.
+- **End to end tests** (`npm run test:e2e`). Open a real browser and click through the app, like filling out and submitting the application form. Also needs the local Supabase stack running. Not run in CI yet.
+
+Run `npm run test:unit` often, it's fast and needs no setup. Run the other two when you touch the database schema or the application form.
+
+### Setting up the local Supabase stack
+
+You need this for the RLS tests, the end to end tests, or to safely try out a new migration before pushing it.
+
+1. Open Docker Desktop and make sure it's running.
+2. Run `supabase start`. The first time you run this it downloads some Docker images, so it can take a few minutes. It sets up a local copy of the database and applies every migration to it.
+3. Just wrote a new migration and the stack was already running from before? Run `supabase db reset` instead. This rebuilds the local database from scratch and reapplies every migration in order. `supabase start` on its own won't pick up a new migration on a database that already exists.
+4. Run `npm run test:rls` or `npm run test:e2e`.
+5. Run `supabase stop` when you're done. You can also just leave it running, that's fine too.
+
+A few things worth knowing:
+
+- `npm run dev` still uses the shared dev Supabase project by default, not your local stack.
+- `npm run test:e2e` starts its own dev server on a different port (3100) so it can run at the same time as your own `npm run dev`.
+- The seeded `associate-2026` job still has its old Google Form link attached on a fresh local stack. On real dev and prod that link was cleared by hand after the in-house form shipped. The e2e tests clear it automatically, but if you're clicking through the apply form by hand against the local stack, run `update jobs set apply_url = null where slug = 'associate-2026';` first.
 
 ## Database migrations
 
 Migration files live in `supabase/migrations/`, named `<timestamp>_<description>.sql`. Once a migration has been merged, don't edit that file. The database has already run it and won't run it again, so add a new migration instead.
+
+Before opening a PR, test a new migration against the [local Supabase stack](#setting-up-the-local-supabase-stack). Run `supabase db reset`, then `npm run test:rls` or `npm run test:e2e`. This is the best way to catch a migration that doesn't apply cleanly, or that breaks an RLS policy, before it ever reaches the shared dev project.
 
 They're applied automatically, not by hand:
 
@@ -78,6 +111,14 @@ They're applied automatically, not by hand:
 - Promoting to `main` applies them to production, after a manual approval step. Schema changes are harder to reverse than a code deploy, so this keeps a human in the loop specifically for that step.
 
 After adding a migration, run `npm run types:gen` to regenerate `lib/database.types.ts`, so the rest of the app has correct types for your schema change.
+
+If you add a new table and then immediately hit `Could not find the table 'public.your_table' in the schema cache` from the app, the migration itself is fine, PostgREST just hasn't picked up the change yet. It caches the schema at startup and normally reloads automatically on DDL, but that doesn't always fire reliably against the local stack. Force it with:
+
+```
+psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -c "NOTIFY pgrst, 'reload schema';"
+```
+
+or just restart the stack (`supabase stop && supabase start`).
 
 When writing a migration, prefer expand-style changes over contract-style changes where possible:
 

@@ -10,11 +10,11 @@ export default async function HistoryPage() {
   const isAdmin = role === "admin";
 
   const supabase = createClerkSupabaseClient();
-  const { data: entries } = await supabase
-    .from("audit_log")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(100);
+  const [{ data: entries }, { data: jobs }] = await Promise.all([
+    supabase.from("audit_log").select("*").order("created_at", { ascending: false }).limit(100),
+    supabase.from("jobs").select("id, title"),
+  ]);
+  const jobTitleByJobId = new Map((jobs ?? []).map((job) => [job.id, job.title]));
 
   const actorIds = [...new Set((entries ?? []).map((e) => e.actor_clerk_user_id))];
   const client = await clerkClient();
@@ -28,8 +28,9 @@ export default async function HistoryPage() {
   const rows = (entries ?? []).map((entry) => ({
     id: entry.id,
     createdAt: entry.created_at,
+    recordType: entry.table_name === "applications" ? ("application" as const) : ("job" as const),
     jobId: entry.record_id,
-    jobTitle: resolveJobTitle(entry),
+    jobTitle: resolveJobTitle(entry, jobTitleByJobId),
     action: entry.action,
     actorName: resolveActorName(entry.actor_clerk_user_id, actorNames),
     actorRole: entry.actor_role ?? "—",
@@ -39,7 +40,7 @@ export default async function HistoryPage() {
 
   return (
     <div>
-      <AdminTabs />
+      <AdminTabs role={role} />
       <h1 className="mb-6 text-xl font-semibold [font-family:var(--font-serif)]">History</h1>
       <HistoryTable rows={rows} isAdmin={isAdmin} />
     </div>

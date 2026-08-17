@@ -16,6 +16,13 @@ const eslintConfig = defineConfig([
     // gitignored but not otherwise excluded from lint globs.
     "supabase/.temp/**",
     "supabase/.branches/**",
+    // The e2e test suite's own isolated Next.js build cache (see
+    // next.config.ts/playwright.config.ts) and Playwright's own run
+    // artifacts -- all gitignored, but eslint's globs don't consult
+    // .gitignore for anything outside the default ignores above.
+    ".next-e2e/**",
+    "test-results/**",
+    "playwright-report/**",
   ]),
 ]);
 

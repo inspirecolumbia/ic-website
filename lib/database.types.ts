@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -7,11 +7,6 @@
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.15"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -39,6 +34,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          id: number
+          resend_from_address: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          resend_from_address?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          resend_from_address?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       application_documents: {
         Row: {
           application_id: string
@@ -67,6 +80,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "application_documents_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      application_reviewer_notes: {
+        Row: {
+          application_id: string
+          author_clerk_user_id: string
+          author_role: string | null
+          created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          note: string
+          updated_at: string
+        }
+        Insert: {
+          application_id: string
+          author_clerk_user_id: string
+          author_role?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          note: string
+          updated_at?: string
+        }
+        Update: {
+          application_id?: string
+          author_clerk_user_id?: string
+          author_role?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          note?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_reviewer_notes_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "applications"
@@ -202,7 +259,6 @@ export type Database = {
           last_name: string
           major: string | null
           phone: string | null
-          reviewer_notes: string | null
           school: string | null
           school_email: string | null
           status: Database["public"]["Enums"]["application_status"]
@@ -219,7 +275,6 @@ export type Database = {
           last_name: string
           major?: string | null
           phone?: string | null
-          reviewer_notes?: string | null
           school?: string | null
           school_email?: string | null
           status?: Database["public"]["Enums"]["application_status"]
@@ -236,7 +291,6 @@ export type Database = {
           last_name?: string
           major?: string | null
           phone?: string | null
-          reviewer_notes?: string | null
           school?: string | null
           school_email?: string | null
           status?: Database["public"]["Enums"]["application_status"]
@@ -402,6 +456,20 @@ export type Database = {
         Args: { p_filters?: Json; p_ids: string[]; p_scope: string }
         Returns: number
       }
+      delete_reviewer_note: { Args: { p_note_id: string }; Returns: undefined }
+      list_reviewer_notes: {
+        Args: { p_application_id: string }
+        Returns: {
+          application_id: string
+          author_clerk_user_id: string
+          created_at: string
+          deleted_at: string
+          id: string
+          is_deleted: boolean
+          note: string
+          updated_at: string
+        }[]
+      }
       submit_application: {
         Args: {
           p_application_id: string
@@ -420,6 +488,10 @@ export type Database = {
           p_year_of_study: string
         }
         Returns: string
+      }
+      update_reviewer_note: {
+        Args: { p_note: string; p_note_id: string }
+        Returns: undefined
       }
     }
     Enums: {
@@ -575,3 +647,4 @@ export const Constants = {
     },
   },
 } as const
+

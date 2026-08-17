@@ -43,7 +43,7 @@ export async function generateMetadata({
     openGraph: {
       title: `${job.title} | Inspire Columbia`,
       description,
-      url: `https://inspirecolumbia.org/jobs/${job.slug}`,
+      url: `https://inspirecolumbia.org/positions/${job.slug}`,
     },
     twitter: {
       title: `${job.title} | Inspire Columbia`,
@@ -63,7 +63,7 @@ export default async function JobPage({
 
   return (
     <>
-      <SiteHeader currentPath={`/jobs/${slug}`} />
+      <SiteHeader currentPath={`/positions/${slug}`} />
       <JobPosting job={jobRowToJob(row)} />
     </>
   );

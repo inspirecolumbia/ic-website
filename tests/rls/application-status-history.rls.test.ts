@@ -100,12 +100,15 @@ describe("application_status_history RLS", () => {
     });
   });
 
-  it("updating reviewer_notes without changing status writes no history row", async () => {
+  it("posting a reviewer note writes no status history row", async () => {
     await withTransaction(async (client) => {
       const jobId = await seedJob(client);
       const appId = await seedApplication(client, jobId);
       await impersonate(client, asStaff());
-      await client.query("update public.applications set reviewer_notes = 'checked in' where id = $1", [appId]);
+      await client.query(
+        "insert into public.application_reviewer_notes (application_id, author_clerk_user_id, note) values ($1, 'user_test_staff', 'checked in')",
+        [appId]
+      );
 
       await impersonate(client, asAdmin());
       const { rows } = await client.query(
