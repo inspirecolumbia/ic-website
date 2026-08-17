@@ -39,7 +39,8 @@ Two things beyond those four variables, only needed for certain kinds of work:
 ```mermaid
 flowchart LR
     A[Your feature branch] -->|PR, CI must pass, squash| B[dev]
-    B -->|PR, CI + 1 tech-leads approval, rebase| C[main, production]
+    B -->|PR, CI + 1 tech-leads approval, merge| C[main, production]
+    C -.->|sync-back PR, merge| B
     B -.->|auto on merge| D[(dev Supabase)]
     C -.->|auto on merge, after a separate approval| E[(prod Supabase)]
 ```
@@ -47,9 +48,9 @@ flowchart LR
 - `dev` is the default branch. Branch off `dev` for your work, not `main`.
 - Open a PR into `dev`. It needs to pass CI (build, typecheck, lint, unit tests) before it can merge, but doesn't need anyone's approval.
 - PRs into `dev` are squash merged (the default button), so don't worry about keeping your commit history clean as you work.
-- Once your change is on `dev`, it gets promoted to production (`main`) periodically by a `tech-leads` member, via a separate PR that does require an approval. `main`'s ruleset only allows **rebase** merges, not squash or a merge commit.
+- Once your change is on `dev`, it gets promoted to production (`main`) periodically by a `tech-leads` member, via a separate PR that does require an approval. `main`'s merge button only offers a real merge commit, not squash, so each promoted feature stays visible as its own commit.
 - Direct pushes to either `dev` or `main` are blocked for everyone, including admins. Everything goes through a PR.
-- **No sync-back step needed.** Because `main` only ever advances by promoting from `dev`, and promotion PRs are always rebase-merged, `main`'s tip is always an exact ancestor of `dev`'s tip. Rebasing `dev`'s (already-squashed) commits onto `main` is always a clean fast-forward: no new commit gets created on `main`, so there's nothing for `dev` to miss and nothing to sync back. Each promoted feature still shows as its own commit on `main`, since `dev` already squashed one commit per PR. (This wasn't always the case — an earlier version of this workflow used a merge commit for promotions, which created commits only `main` had, requiring a manual sync-back PR after every promotion. If you ever see `main` and `dev` diverge again, e.g. from an emergency hotfix landing directly on `main`, that same manual sync (open a PR with `main` as head, `dev` as base, merge with the **merge** method) is still the fix.)
+- **After a promotion, sync `main` back into `dev`**: open one more PR (`main` as head, `dev` as base) and merge it using the **merge** method, not the default squash button. This keeps the two branches' git history aligned. Skipping this, or squashing it by mistake, doesn't break anything, but leaves a permanent, confusing gap between the branches that has to be fixed the same way later.
 
 ## Common commands
 
