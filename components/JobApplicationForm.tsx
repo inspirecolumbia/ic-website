@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { submitApplication } from "@/app/jobs/actions";
+import { submitApplication } from "@/app/positions/actions";
 import {
   SCHOOLS,
   SCREENING_QUESTIONS,
@@ -233,7 +233,7 @@ export default function JobApplicationForm({
             Thanks for applying to {jobTitle}. We&apos;ll be in touch.
           </p>
           <Link
-            href={`/jobs/${jobSlug}`}
+            href={`/positions/${jobSlug}`}
             className="mt-6 inline-block font-semibold text-[var(--brand)] no-underline hover:underline"
           >
             Back to the job posting
@@ -283,7 +283,7 @@ export default function JobApplicationForm({
     <main className="bg-[var(--surface)] px-6 py-12 md:px-8 md:py-16">
       <div className="mx-auto w-full max-w-[800px]">
         <Link
-          href={`/jobs/${jobSlug}`}
+          href={`/positions/${jobSlug}`}
           className="mb-6 inline-flex items-center gap-1 text-sm font-medium text-[var(--ink-muted)] no-underline hover:text-[var(--brand)] hover:underline"
         >
           ← Back to job posting

@@ -142,7 +142,7 @@ export async function createJob(prevState: FormState, formData: FormData): Promi
   }
 
   revalidatePath("/admin/jobs");
-  revalidatePath("/jobs");
+  revalidatePath("/positions");
   return {
     ok: true,
     id: data.id,
@@ -230,8 +230,8 @@ export async function updateJob(id: string, prevState: FormState, formData: Form
   if (oldPathToDeleteAfterSuccess) await deleteJobPhotoObject(supabase, oldPathToDeleteAfterSuccess);
 
   revalidatePath("/admin/jobs");
-  revalidatePath("/jobs");
-  revalidatePath(`/jobs/${job.slug}`);
+  revalidatePath("/positions");
+  revalidatePath(`/positions/${job.slug}`);
   return {
     ok: true,
     notice: joinNotices(
@@ -307,7 +307,7 @@ export async function deleteJob(id: string): Promise<{ error: string } | null> {
   if (existing?.photo_path) await deleteJobPhotoObject(supabase, existing.photo_path);
 
   revalidatePath("/admin/jobs");
-  revalidatePath("/jobs");
+  revalidatePath("/positions");
   return null;
 }
 
@@ -316,7 +316,7 @@ export async function bulkDeleteJobs(ids: string[]): Promise<{ error: string } |
   const { data: existing } = await supabase.from("jobs").select("photo_path").in("id", ids);
   const { error } = await supabase.from("jobs").delete().in("id", ids);
   revalidatePath("/admin/jobs");
-  revalidatePath("/jobs");
+  revalidatePath("/positions");
   if (error) return { error: error.message };
 
   const photoPaths = (existing ?? []).map((row) => row.photo_path).filter((p): p is string => Boolean(p));
@@ -333,7 +333,7 @@ export async function reorderJobs(orderedIds: string[]): Promise<{ error: string
   );
   const failed = results.find((r) => r.error);
   revalidatePath("/admin/jobs");
-  revalidatePath("/jobs");
+  revalidatePath("/positions");
   return failed ? { error: failed.error!.message } : null;
 }
 
@@ -374,7 +374,7 @@ export async function transitionStatus(id: string, status: JobStatus): Promise<{
   }
 
   revalidatePath("/admin/jobs");
-  revalidatePath("/jobs");
+  revalidatePath("/positions");
   return null;
 }
 

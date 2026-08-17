@@ -20,7 +20,7 @@ test.afterAll(async () => {
 });
 
 test.beforeEach(async ({ page }) => {
-  await page.goto(`/jobs/${JOB_SLUG}/apply`);
+  await page.goto(`/positions/${JOB_SLUG}/apply`);
 });
 
 test.describe("happy path", () => {
@@ -102,7 +102,7 @@ test.describe("team preference validation", () => {
       subTrack: null,
     });
     // Deliberately never click a sub-track option -- the resolved value
-    // submitted for that slot is an empty string. app/jobs/actions.ts's
+    // submitted for that slot is an empty string. app/positions/actions.ts's
     // splitTeamPreferences() filters out falsy formData values before
     // validation ever sees them, so this surfaces as "only 2 preferences
     // given", not as an invalid-team-name error -- still correctly
@@ -140,7 +140,7 @@ test.describe("other server-side validation", () => {
     await submit(page);
     await expect(page.getByRole("heading", { name: "Application submitted" })).toBeVisible();
 
-    await page.goto(`/jobs/${JOB_SLUG}/apply`);
+    await page.goto(`/positions/${JOB_SLUG}/apply`);
     await fillApplicationForm(page, { email });
     await submit(page);
 

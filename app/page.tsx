@@ -165,7 +165,7 @@ export default function Home() {
               more and apply.
             </p>
             <Link
-              href="/jobs"
+              href="/positions"
               className="inline-block rounded-full bg-[var(--brand)] px-7 py-3.5 font-bold text-white no-underline transition-colors duration-150 hover:bg-[var(--brand-hover)]"
             >
               View Open Roles

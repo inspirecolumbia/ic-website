@@ -50,7 +50,7 @@ export default async function ApplyPage({
 
   return (
     <>
-      <SiteHeader currentPath={`/jobs/${slug}/apply`} />
+      <SiteHeader currentPath={`/positions/${slug}/apply`} />
       <JobApplicationForm jobId={job.id} jobTitle={job.title} jobSlug={job.slug} />
     </>
   );
