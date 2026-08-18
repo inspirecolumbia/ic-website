@@ -1,0 +1,50 @@
+name: Sync dev from main
+
+# Runs after every push to main -- in practice, always a promotion PR merge
+# from dev, since the "main-only-from-dev" CI check (ci.yml) blocks any
+# other kind of PR into main from merging in the first place.
+#
+# Opens a PR merging main back into dev, and auto-merges it once CI passes.
+# No human needs to click anything unless it can't merge cleanly (a real
+# conflict), in which case it's left open, same as before this workflow
+# existed. This deliberately doesn't push directly to dev -- that would
+# need a branch-protection bypass grant, and the only mechanisms GitHub
+# offers for scoping one to just this automation (a dedicated GitHub App,
+# or a deploy key) are either real setup work or outright disabled for
+# this org. Going through a normal, always-permitted PR avoids needing any
+# such exception at all, at the cost of leaving a merge commit on dev that
+# main doesn't have -- see CONTRIBUTING.md's "How to contribute code" for
+# why that's cosmetic, not a functional gap.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Open (or reuse) the sync-back PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing=$(gh pr list --base dev --head main --state open --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            echo "Sync-back PR #$existing is already open, leaving it as-is."
+            pr_number="$existing"
+          else
+            pr_number=$(gh pr create \
+              --base dev --head main \
+              --title "Sync main back into dev" \
+              --body "Brings dev back in sync with main after a promotion. Nothing here needs review -- it's only commits dev's own history already produced." \
+              | grep -oE '[0-9]+$') || {
+                echo "Nothing to sync -- dev and main are already even."
+                exit 0
+              }
+          fi
+          gh pr merge "$pr_number" --merge --auto || echo "Couldn't auto-merge (probably a real conflict) -- left open for a human."

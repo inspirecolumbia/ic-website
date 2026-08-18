@@ -39,17 +39,18 @@ Two things beyond those four variables, only needed for certain kinds of work:
 ```mermaid
 flowchart LR
     A[Your feature branch] -->|PR, CI must pass, squash| B[dev]
-    B -->|PR, CI + 1 tech-leads approval, rebase| C[main, production]
+    B -->|PR, CI + 1 tech-leads approval, merge| C[main, production]
+    C -.->|auto: opens a merge PR into dev, auto-merges once CI passes| B
     B -.->|auto on merge| D[(dev Supabase)]
     C -.->|auto on merge, after a separate approval| E[(prod Supabase)]
 ```
 
-- `dev` is the default branch. Branch off `dev` for your work, not `main`.
+- `dev` is the default branch. Branch off `dev` for your work, not `main` -- **this is enforced by CI, not just convention**: a PR into `main` fails its required checks unless it's coming from `dev`, even for an urgent fix. Branch off `dev`, merge that, then promote from there; there's no bypass.
 - Open a PR into `dev`. It needs to pass CI (build, typecheck, lint, unit tests) before it can merge, but doesn't need anyone's approval.
 - PRs into `dev` are squash merged (the default button), so don't worry about keeping your commit history clean as you work.
-- Once your change is on `dev`, it gets promoted to production (`main`) periodically by a `tech-leads` member, via a separate PR that does require an approval. `main`'s ruleset only allows **rebase** merges, not squash or a merge commit.
-- Direct pushes to either `dev` or `main` are blocked for everyone, including admins. Everything goes through a PR.
-- **No sync-back step needed.** Because `main` only ever advances by promoting from `dev`, and promotion PRs are always rebase-merged, `main`'s tip is always an exact ancestor of `dev`'s tip. Rebasing `dev`'s (already-squashed) commits onto `main` is always a clean fast-forward: no new commit gets created on `main`, so there's nothing for `dev` to miss and nothing to sync back. Each promoted feature still shows as its own commit on `main`, since `dev` already squashed one commit per PR. (This wasn't always the case — an earlier version of this workflow used a merge commit for promotions, which created commits only `main` had, requiring a manual sync-back PR after every promotion. If you ever see `main` and `dev` diverge again, e.g. from an emergency hotfix landing directly on `main`, that same manual sync (open a PR with `main` as head, `dev` as base, merge with the **merge** method) is still the fix.)
+- Once your change is on `dev`, it gets promoted to production (`main`) periodically by a `tech-leads` member, via a separate PR that does require an approval. `main`'s ruleset only allows **merge** commits, not squash or rebase (an earlier rebase-only setup was tried and reverted -- rebasing `dev`'s squashed commits onto `main` isn't actually a clean fast-forward once `dev` has moved on, which happens constantly with more than one person committing), so each promoted feature stays visible as its own commit.
+- Direct pushes to either `dev` or `main` are blocked for everyone, including admins, with no exceptions -- everything, human or automated, goes through a PR.
+- **Syncing `main` back into `dev` after a promotion is automatic.** A workflow (`.github/workflows/sync-dev-from-main.yml`) fires on every push to `main`, opens a "Sync main back into dev" PR (merge method, not squash), and merges it itself once CI passes. Since `main` only ever advances via a promotion from `dev` (the CI check above guarantees that), this PR is never anything but commits `dev`'s own history already produced, so it merges cleanly essentially always. You'll only ever need to act on it if it genuinely can't merge (a real conflict -- possible but rare), in which case it's left open for you.
 
 ## Common commands
 
