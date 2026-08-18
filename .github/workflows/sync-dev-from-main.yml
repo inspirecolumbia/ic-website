@@ -28,8 +28,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check whether dev is missing anything from main
+        id: diff
+        run: |
+          # Checked BEFORE attempting to open a PR, and separately from it,
+          # so "genuinely nothing to sync" and "tried to sync but couldn't"
+          # can never be confused with each other -- the first is a normal,
+          # silent no-op; the second must fail the job loudly instead of
+          # being swallowed as if it were the first (a real bug this
+          # workflow shipped with: a PR-create failure for any reason, e.g.
+          # this org's "Actions can't create PRs" setting, was being
+          # reported as "nothing to sync" instead of as a failure).
+          if git diff --quiet origin/dev origin/main; then
+            echo "has_diff=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_diff=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Open (or reuse) the sync-back PR
+        if: steps.diff.outputs.has_diff == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -42,9 +62,6 @@ jobs:
               --base dev --head main \
               --title "Sync main back into dev" \
               --body "Brings dev back in sync with main after a promotion. Nothing here needs review -- it's only commits dev's own history already produced." \
-              | grep -oE '[0-9]+$') || {
-                echo "Nothing to sync -- dev and main are already even."
-                exit 0
-              }
+              | grep -oE '[0-9]+$')
           fi
           gh pr merge "$pr_number" --merge --auto || echo "Couldn't auto-merge (probably a real conflict) -- left open for a human."
