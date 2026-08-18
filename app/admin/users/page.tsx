@@ -2,6 +2,7 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 import AdminTabs from "@/components/admin/AdminTabs";
 import UserRoleManager, { type ManagedUser } from "@/components/admin/UserRoleManager";
 import { roleRank } from "@/lib/user-roles";
+import { getUserDeleteEnabled } from "@/lib/settings";
 
 // Generous but bounded, matching this codebase's other "fetch cap" pages
 // (HISTORY_FETCH_CAP, APPLICATIONS_FETCH_CAP) -- a small nonprofit's staff
@@ -24,7 +25,10 @@ export default async function UsersPage() {
   }
 
   const client = await clerkClient();
-  const { data: clerkUsers } = await client.users.getUserList({ limit: USERS_FETCH_CAP });
+  const [{ data: clerkUsers }, userDeleteEnabled] = await Promise.all([
+    client.users.getUserList({ limit: USERS_FETCH_CAP }),
+    getUserDeleteEnabled(),
+  ]);
 
   const users: ManagedUser[] = clerkUsers
     .map((u) => ({
@@ -51,7 +55,12 @@ export default async function UsersPage() {
         Promote a registered account to Member or Staff, or revoke access. Admin roles are managed
         in the Clerk dashboard, not here.
       </p>
-      <UserRoleManager users={users} currentUserId={currentUserId} fetchCap={USERS_FETCH_CAP} />
+      <UserRoleManager
+        users={users}
+        currentUserId={currentUserId}
+        fetchCap={USERS_FETCH_CAP}
+        userDeleteEnabled={userDeleteEnabled}
+      />
     </div>
   );
 }

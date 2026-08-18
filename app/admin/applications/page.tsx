@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { createClerkSupabaseClient } from "@/lib/supabase/clerk";
 import { applicationRowToApplication, type ApplicationListRow } from "@/lib/applications";
+import { getApplicationDeleteEnabled } from "@/lib/settings";
 import AdminTabs from "@/components/admin/AdminTabs";
 import ApplicationsManager from "@/components/admin/ApplicationsManager";
 
@@ -24,13 +25,14 @@ export default async function ApplicationsPage() {
   }
 
   const supabase = createClerkSupabaseClient();
-  const [{ data: jobs }, { data: applications }] = await Promise.all([
+  const [{ data: jobs }, { data: applications }, applicationDeleteEnabled] = await Promise.all([
     supabase.from("jobs").select("id, title").order("title"),
     supabase
       .from("applications")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(APPLICATIONS_FETCH_CAP),
+    getApplicationDeleteEnabled(),
   ]);
 
   const jobTitles = new Map((jobs ?? []).map((job) => [job.id, job.title]));
@@ -43,7 +45,13 @@ export default async function ApplicationsPage() {
     <div>
       <AdminTabs role={role} />
       <h1 className="mb-6 text-xl font-semibold [font-family:var(--font-serif)]">Applications</h1>
-      <ApplicationsManager rows={rows} jobs={jobs ?? []} fetchCap={APPLICATIONS_FETCH_CAP} />
+      <ApplicationsManager
+        rows={rows}
+        jobs={jobs ?? []}
+        fetchCap={APPLICATIONS_FETCH_CAP}
+        currentUserRole={role as "staff" | "admin"}
+        applicationDeleteEnabled={applicationDeleteEnabled}
+      />
     </div>
   );
 }

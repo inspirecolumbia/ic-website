@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Copy, Mail, Phone } from "lucide-react";
-import { updateApplicationStatus } from "@/app/admin/actions";
+import { deleteApplication, updateApplicationStatus } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -116,6 +117,7 @@ export default function ApplicationDetail({
   currentUserId,
   currentUserRole,
   emailLog,
+  applicationDeleteEnabled,
 }: {
   application: Application;
   jobTitle: string;
@@ -128,7 +130,9 @@ export default function ApplicationDetail({
   currentUserId: string | null;
   currentUserRole: "staff" | "admin";
   emailLog: EmailLogEntry[];
+  applicationDeleteEnabled: boolean;
 }) {
+  const router = useRouter();
   const [status, setStatus] = useState(application.status);
   const [savedStatus, setSavedStatus] = useState(application.status);
   const [statusPending, startStatusTransition] = useTransition();
@@ -136,6 +140,9 @@ export default function ApplicationDetail({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [confirmStatusOpen, setConfirmStatusOpen] = useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletePending, startDeleteTransition] = useTransition();
 
   useEffect(() => {
     if (!successMessage) return;
@@ -434,6 +441,57 @@ export default function ApplicationDetail({
           currentUserRole={currentUserRole}
         />
       </div>
+
+      {currentUserRole === "admin" && applicationDeleteEnabled && (
+        <div className="mt-6 rounded-lg border border-[var(--admin-danger)]/30 bg-[var(--admin-danger-soft)]/30 p-4">
+          <h2 className="mb-1 text-base font-medium text-[var(--admin-danger)]">Danger zone</h2>
+          <p className="mb-3 text-sm text-[var(--admin-text-muted)]">
+            Permanently deletes this application, its documents, team preferences, screening
+            answers, status history, reviewer notes, and email log. This can&apos;t be undone.
+          </p>
+          <Button variant="destructive" size="sm" onClick={() => setConfirmDeleteOpen(true)}>
+            Delete application
+          </Button>
+        </div>
+      )}
+
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {application.firstName} {application.lastName}&apos;s application?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes the application and everything attached to it. This can&apos;t
+              be undone.
+              {deleteError && (
+                <span role="alert" className="mt-2 block text-[var(--admin-danger)]">
+                  {deleteError}
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletePending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deletePending}
+              onClick={() => {
+                startDeleteTransition(async () => {
+                  const result = await deleteApplication(application.id);
+                  if (result?.error) {
+                    setDeleteError(result.error);
+                  } else {
+                    router.push("/admin/applications");
+                  }
+                });
+              }}
+            >
+              {deletePending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

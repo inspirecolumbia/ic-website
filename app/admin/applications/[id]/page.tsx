@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { createClerkSupabaseClient } from "@/lib/supabase/clerk";
 import { applicationRowToApplication } from "@/lib/applications";
+import { getApplicationDeleteEnabled } from "@/lib/settings";
 import AdminTabs from "@/components/admin/AdminTabs";
 import ApplicationDetail from "@/components/admin/ApplicationDetail";
 
@@ -34,6 +35,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
     { data: statusHistory },
     { data: reviewerNotes },
     { data: emailLog },
+    applicationDeleteEnabled,
   ] = await Promise.all([
     supabase.from("applications").select("*").eq("id", id).maybeSingle(),
     supabase.from("application_documents").select("*").eq("application_id", id),
@@ -58,6 +60,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
       .select("*")
       .eq("application_id", id)
       .order("created_at", { ascending: false }),
+    getApplicationDeleteEnabled(),
   ]);
 
   if (!row) notFound();
@@ -99,6 +102,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
         currentUserId={userId}
         currentUserRole={role as "staff" | "admin"}
         emailLog={emailLog ?? []}
+        applicationDeleteEnabled={applicationDeleteEnabled}
       />
     </div>
   );
