@@ -9,6 +9,7 @@ import {
 import { ApplicationUploadError, uploadApplicationDocument } from "@/lib/storage";
 import { SCREENING_QUESTIONS } from "@/lib/screening";
 import { sendEmail, sendTemplateEmail } from "@/lib/email/send";
+import { getStaffAlertTemplateId } from "@/lib/settings";
 import {
   APPLICATION_CONFIRMATION_TEMPLATE_ALIAS,
   applicationConfirmationTemplateVariables,
@@ -16,13 +17,19 @@ import {
 } from "@/lib/email/templates";
 import type { Database } from "@/lib/database.types";
 
-export type ApplicationFormState = { error: string } | { ok: true } | null;
+export type ApplicationFormState = { error: string; field?: string } | { ok: true } | null;
 
 function splitTeamPreferences(formData: FormData) {
-  return ["team_choice_1", "team_choice_2", "team_choice_3"]
-    .map((name) => formData.get(name) as string | null)
-    .filter((value): value is string => Boolean(value))
-    .map((teamName, i) => ({ teamName, rank: i + 1 }));
+  const slots = ["team_choice_1", "team_choice_2", "team_choice_3"].map((field) => ({
+    field,
+    teamName: ((formData.get(field) as string | null) ?? "").trim(),
+  }));
+  return {
+    teamPreferences: slots
+      .filter((slot) => slot.teamName)
+      .map((slot, i) => ({ teamName: slot.teamName, rank: i + 1 })),
+    teamSlots: slots,
+  };
 }
 
 function buildScreeningAnswers(formData: FormData) {
@@ -51,9 +58,11 @@ export async function submitApplication(
   const resumeFile = formData.get("resume") as File | null;
   const transcriptFile = formData.get("transcript") as File | null;
 
-  if (!resumeFile || resumeFile.size === 0) return { error: "A resume upload is required." };
+  if (!resumeFile || resumeFile.size === 0) {
+    return { error: "A resume upload is required.", field: "resume" };
+  }
   if (!transcriptFile || transcriptFile.size === 0) {
-    return { error: "An unofficial transcript upload is required." };
+    return { error: "An unofficial transcript upload is required.", field: "transcript" };
   }
 
   try {
@@ -62,15 +71,23 @@ export async function submitApplication(
     // successful upload (e.g. a later validation error) can leave an
     // orphaned Storage file with no referencing row -- accepted for this
     // branch, no cleanup job in scope.
-    const resumeUpload = await uploadApplicationDocument(supabase, applicationId, "resume", resumeFile);
-    const transcriptUpload = await uploadApplicationDocument(
-      supabase,
-      applicationId,
-      "transcript",
-      transcriptFile
-    );
+    let resumeUpload: Awaited<ReturnType<typeof uploadApplicationDocument>>;
+    let transcriptUpload: Awaited<ReturnType<typeof uploadApplicationDocument>>;
+    try {
+      resumeUpload = await uploadApplicationDocument(supabase, applicationId, "resume", resumeFile);
+    } catch (err) {
+      if (err instanceof ApplicationUploadError) return { error: err.message, field: "resume" };
+      throw err;
+    }
+    try {
+      transcriptUpload = await uploadApplicationDocument(supabase, applicationId, "transcript", transcriptFile);
+    } catch (err) {
+      if (err instanceof ApplicationUploadError) return { error: err.message, field: "transcript" };
+      throw err;
+    }
 
     const gpaRaw = formData.get("gpa") as string | null;
+    const { teamPreferences, teamSlots } = splitTeamPreferences(formData);
 
     const payload = buildApplicationInsertPayload({
       applicationId,
@@ -92,7 +109,8 @@ export async function submitApplication(
           storagePath: transcriptUpload.storagePath,
         },
       ],
-      teamPreferences: splitTeamPreferences(formData),
+      teamPreferences,
+      teamSlots,
       screeningAnswers: buildScreeningAnswers(formData),
     });
 
@@ -111,6 +129,7 @@ export async function submitApplication(
       if (error.code === "23505") {
         return {
           error: "You've already submitted an application for this position with this email address.",
+          field: "email",
         };
       }
       return { error: "Something went wrong submitting your application. Please try again." };
@@ -125,6 +144,28 @@ export async function submitApplication(
     const lastName = formData.get("last_name") as string;
     const applicantEmail = formData.get("email") as string;
     const staffAlertEmailAddress = process.env.STAFF_ALERT_EMAIL;
+    const staffAlertTemplateId = await getStaffAlertTemplateId();
+
+    function sendStaffAlert(to: string) {
+      // A template set in Admin > Settings takes over from the hardcoded
+      // plain-text message -- variable names are whatever that template
+      // defines, so this supplies the same fields by both a generic and an
+      // applicant-specific name and lets Resend's per-variable
+      // fallback_value cover anything it doesn't recognize.
+      if (staffAlertTemplateId) {
+        return sendTemplateEmail({
+          to,
+          templateId: staffAlertTemplateId,
+          variables: {
+            applicant_name: `${firstName} ${lastName}`,
+            first_name: firstName,
+            last_name: lastName,
+            job_title: jobTitle,
+          },
+        });
+      }
+      return sendEmail({ to, ...staffAlertEmail(`${firstName} ${lastName}`, jobTitle) });
+    }
 
     // Best-effort: a Resend outage or misconfiguration must never turn a
     // successful application submission into a user-facing error.
@@ -134,18 +175,15 @@ export async function submitApplication(
         templateId: APPLICATION_CONFIRMATION_TEMPLATE_ALIAS,
         variables: applicationConfirmationTemplateVariables(firstName, lastName),
       }),
-      staffAlertEmailAddress
-        ? sendEmail({
-            to: staffAlertEmailAddress,
-            ...staffAlertEmail(`${firstName} ${lastName}`, jobTitle),
-          })
-        : Promise.resolve(),
+      staffAlertEmailAddress ? sendStaffAlert(staffAlertEmailAddress) : Promise.resolve(),
     ]);
 
     return { ok: true };
   } catch (err) {
-    if (err instanceof ApplicationValidationError || err instanceof ApplicationUploadError) {
-      return { error: err.message };
+    // ApplicationUploadError from either upload call is already handled
+    // locally above (tagged with the right field) and never reaches here.
+    if (err instanceof ApplicationValidationError) {
+      return { error: err.message, field: err.field };
     }
     return { error: "Something went wrong submitting your application. Please try again." };
   }

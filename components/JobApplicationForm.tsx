@@ -1,14 +1,15 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import type { ReactNode } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode, Ref } from "react";
 import Link from "next/link";
-import { Upload } from "lucide-react";
+import { Eye, Upload, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -17,14 +18,29 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { submitApplication } from "@/app/positions/actions";
+import { useServerFormError } from "@/lib/hooks/useServerFormError";
+import { cn } from "@/lib/utils";
 import {
   SCHOOLS,
   SCREENING_QUESTIONS,
   TEAM_6_PARENT_TITLE,
   TEAM_6_SUB_TRACKS,
+  TEAM_DESCRIPTIONS,
   YEAR_OF_STUDY_OPTIONS,
   availableTeams,
 } from "@/lib/screening";
+
+// Sentinel for the team-preference dropdowns' "deselect back to blank"
+// option -- an actual empty-string SelectItem value is a known footgun with
+// this project's Select primitive (base-ui), so a non-empty placeholder
+// value is translated to/from "" at the boundary instead.
+const UNSELECTED_TEAM = "__unselected__";
+
+// Shared visual treatment for a field the server just flagged as invalid --
+// applied to the field's wrapper, not the input itself, so it works
+// uniformly across Input/RadioGroup/Select/FileUploadField without needing
+// to override each control's own internal border classes.
+const erroredFieldClassName = "rounded-md ring-2 ring-red-400 ring-offset-2 ring-offset-[var(--card-public)]";
 
 // Shared by every RadioGroupItem on this page -- pulled out once these
 // fields (school, year of study) needed the same styling as the eligibility
@@ -71,33 +87,127 @@ function FileUploadField({
   id,
   name,
   label,
+  errored,
+  resetVersion,
+  onChangeClearError,
 }: {
   id: string;
   name: string;
   label: ReactNode;
+  errored?: boolean;
+  // Bumped once per completed submission attempt (see JobApplicationForm).
+  // React's form actions run a real native form.reset() after every
+  // attempt, success or failure, which silently clears this field's actual
+  // <input type="file"> value (file inputs are always uncontrolled, can't
+  // be restored programmatically). Re-syncing from the real DOM value
+  // whenever this changes keeps the shown file honest -- previously this
+  // component kept *showing* the old filename after a reset even though
+  // the real input was empty, so a resubmit could fail with "a resume
+  // upload is required" despite the UI still displaying one.
+  resetVersion: number;
+  onChangeClearError?: () => void;
 }) {
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // The native file input is always uncontrolled, and React runs a real
+    // form.reset() after every action (success or failure), which silently
+    // empties its actual FileList even though `file` state -- and the UI --
+    // still show a selection. Rather than following the DOM's now-wrong
+    // value (which is what used to happen here, and forced a full
+    // reattach after any error, not just the one that was actually wrong),
+    // reattach the file we're still holding onto the real input via
+    // DataTransfer so a resubmit's FormData genuinely carries it again,
+    // matching what's displayed.
+    const input = inputRef.current;
+    if (!input || !file) return;
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    input.files = dataTransfer.files;
+  }, [resetVersion, file]);
+
+  // Local-only preview -- nothing has been uploaded yet at this point in the
+  // flow (that happens server-side on final submit), so this reads the
+  // file the browser already has in memory rather than needing a signed
+  // URL the way the admin dashboard's saved-document preview does. Derived
+  // via useMemo rather than effect+setState, so creating the object URL
+  // happens during render and only the cleanup (revocation) needs an effect.
+  const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  function removeFile() {
+    setFile(null);
+    setPreviewOpen(false);
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  const labelText = typeof label === "string" ? label : "Document";
 
   return (
-    <div>
+    <div data-field={id}>
       <Label htmlFor={id} className="mb-1.5">
         {label}
       </Label>
       <label
         htmlFor={id}
-        className="mt-1.5 flex cursor-pointer items-center gap-3 rounded-md border border-dashed border-[var(--line)] bg-[var(--card-public)] px-4 py-3.5 text-sm text-[var(--ink-muted)] transition-colors hover:border-[var(--brand)] hover:bg-[var(--surface-blue)]"
+        // A file is already selected -- clicking the dropzone again would
+        // silently swap it for a new one without the applicant explicitly
+        // choosing to. Require Remove first, matching how the admin
+        // dashboard's document handling treats a saved file as something
+        // you replace deliberately, not overwrite by accident.
+        onClick={(e) => {
+          if (file) e.preventDefault();
+        }}
+        className={`mt-1.5 flex items-center gap-3 rounded-md border border-dashed px-4 py-3.5 text-sm text-[var(--ink-muted)] transition-colors ${
+          file ? "cursor-default" : "cursor-pointer hover:border-[var(--brand)] hover:bg-[var(--surface-blue)]"
+        } ${errored ? "border-red-400 bg-red-50" : "border-[var(--line)] bg-[var(--card-public)]"}`}
       >
         <Upload className="size-5 shrink-0 text-[var(--brand)]" aria-hidden="true" />
         <span className="min-w-0 flex-1 truncate">
-          {fileName ? (
-            <span className="font-medium text-[var(--ink)]">{fileName}</span>
-          ) : (
-            "Choose a file"
-          )}
+          {file ? <span className="font-medium text-[var(--ink)]">{file.name}</span> : "Choose a file"}
         </span>
-        <span className="shrink-0 text-xs text-[var(--ink-muted)]">PDF, max 5 MB</span>
+        {file ? (
+          <span className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              aria-label={`Preview ${labelText}`}
+              // preventDefault/stopPropagation keep the surrounding
+              // <label>'s default behavior (opening the file picker) from
+              // firing on top of this button's own click.
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setPreviewOpen(true);
+              }}
+              className="rounded-md p-1 text-[var(--ink-muted)] outline-none transition-colors hover:bg-[var(--surface)] hover:text-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+            >
+              <Eye className="size-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="Remove selected file"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                removeFile();
+              }}
+              className="rounded-md p-1 text-[var(--ink-muted)] outline-none transition-colors hover:bg-[var(--surface)] hover:text-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+            >
+              <X className="size-4" />
+            </button>
+          </span>
+        ) : (
+          <span className="shrink-0 text-xs text-[var(--ink-muted)]">PDF, max 5 MB</span>
+        )}
       </label>
       <input
+        ref={inputRef}
         id={id}
         name={name}
         type="file"
@@ -105,17 +215,28 @@ function FileUploadField({
         required
         className="sr-only"
         onChange={(e) => {
-          // A resubmission after a fixable validation error clears the
-          // browser's actual file selection (files can't be restored
-          // programmatically for security reasons), which also fires this
-          // onChange with an empty file list -- only overwrite the
-          // remembered name when a real file comes through, so the label
-          // doesn't flash back to "Choose a file" and make it look like the
-          // previous choice was forgotten.
-          const newName = e.target.files?.[0]?.name;
-          if (newName) setFileName(newName);
+          const newFile = e.target.files?.[0];
+          if (newFile) {
+            setFile(newFile);
+            onChangeClearError?.();
+          }
         }}
       />
+
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>{labelText}</DialogTitle>
+          </DialogHeader>
+          {previewUrl && (
+            <iframe
+              src={previewUrl}
+              title={`${labelText} preview`}
+              className="h-[75vh] w-full rounded-md border border-[var(--line)]"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -135,11 +256,15 @@ function RadioWithOther({
   options,
   otherPlaceholder,
   allowOther = true,
+  resetVersion,
+  onChangeClearError,
 }: {
   name: string;
   options: string[];
   otherPlaceholder: string;
   allowOther?: boolean;
+  resetVersion: number;
+  onChangeClearError?: () => void;
 }) {
   const [choice, setChoice] = useState("");
   const [otherValue, setOtherValue] = useState("");
@@ -148,7 +273,14 @@ function RadioWithOther({
 
   return (
     <div>
-      <RadioGroup value={choice} onValueChange={(v) => setChoice(v as string)} className="flex flex-col gap-2">
+      <RadioGroup
+        value={choice}
+        onValueChange={(v) => {
+          setChoice(v as string);
+          onChangeClearError?.();
+        }}
+        className="flex flex-col gap-2"
+      >
         {renderedOptions.map((option) => (
           <label
             key={option}
@@ -166,7 +298,10 @@ function RadioWithOther({
           required
           placeholder={otherPlaceholder}
           value={otherValue}
-          onChange={(e) => setOtherValue(e.target.value)}
+          onChange={(e) => {
+            setOtherValue(e.target.value);
+            onChangeClearError?.();
+          }}
           className={`${fieldClassName} mt-2`}
         />
       ) : (
@@ -174,7 +309,17 @@ function RadioWithOther({
         // browser can't surface a validation error for it. Emptiness (no
         // option picked yet) is caught server-side the same as every other
         // field, by buildApplicationInsertPayload / the submit_application RPC.
-        <input type="hidden" name={name} value={choice} />
+        //
+        // Keyed on resetVersion to force a full remount after every
+        // submission attempt -- React's automatic post-action form.reset()
+        // clears this input's real DOM value, but since `choice` itself
+        // (the state driving `value` here) doesn't change from that reset,
+        // React's reconciler sees no prop diff and skips rewriting the DOM,
+        // leaving it genuinely empty even though the UI still shows a
+        // selection. A resubmit then reads that real empty value and fails
+        // validation for a field that looks filled in. Remounting forces a
+        // fresh node with the correct current value every time.
+        <input type="hidden" key={`${name}-${resetVersion}`} name={name} value={choice} />
       )}
     </div>
   );
@@ -190,6 +335,36 @@ export default function JobApplicationForm({
   jobSlug: string;
 }) {
   const [state, formAction, pending] = useActionState(submitApplication, null);
+  const { bannerRef, erroredField, clearFieldError, fieldErrorProps } = useServerFormError(
+    state,
+    (s) => (s && "error" in s ? { message: s.error, field: s.field } : null)
+  );
+
+  // Bumped once per completed submission attempt -- passed down to key/
+  // remount every controlled hidden input (team choices, school, year of
+  // study, eligibility) and to re-sync FileUploadField's file state. React
+  // runs a real native form.reset() after every form action (success or
+  // failure), which force-clears those inputs' actual DOM values. Because
+  // the React state driving each one (e.g. `choice1`) doesn't itself
+  // change from that reset, React's reconciler sees no prop diff on the
+  // next render and skips rewriting the DOM node, leaving it genuinely
+  // empty while the UI still shows a selection -- a resubmit then reads
+  // that real empty value and fails validation for a field that looks
+  // filled in. Keying elements off this version number forces a fresh
+  // remount with the correct value every time, closing that gap.
+  //
+  // "Adjusting state when a prop changes" (React's own documented pattern,
+  // see https://react.dev/learn/you-might-not-need-an-effect) -- calling
+  // setState directly during render, guarded by comparing against the
+  // previous value, avoids both an unnecessary extra render (vs. an effect)
+  // and the ref-during-render read/write this repo's stricter lint config
+  // rejects (vs. a ref-based counter).
+  const [prevState, setPrevState] = useState(state);
+  const [resetVersion, setResetVersion] = useState(0);
+  if (state !== prevState) {
+    setPrevState(state);
+    setResetVersion((v) => v + 1);
+  }
 
   // Every field below is fully React-controlled (value + onChange/
   // onValueChange, never a bare `name` handed to a native or headless-UI
@@ -301,14 +476,19 @@ export default function JobApplicationForm({
             <input type="hidden" name="job_id" value={jobId} />
 
             {state && "error" in state && (
-              <p className="border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <p
+                ref={bannerRef as Ref<HTMLParagraphElement>}
+                role="alert"
+                tabIndex={-1}
+                className="border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 outline-none"
+              >
                 {state.error}
               </p>
             )}
 
             <FormSection title="Personal Information">
               <div className="grid gap-4 sm:grid-cols-2">
-                <div>
+                <div {...fieldErrorProps("first_name")} className={cn(erroredField === "first_name" && erroredFieldClassName)}>
                   <Label htmlFor="first_name" className="mb-1.5">
                     First name
                     <Required />
@@ -316,13 +496,17 @@ export default function JobApplicationForm({
                   <Input
                     id="first_name"
                     name="first_name"
+                    autoComplete="given-name"
                     required
                     value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
+                    onChange={(e) => {
+                      setFirstName(e.target.value);
+                      clearFieldError("first_name");
+                    }}
                     className={fieldClassName}
                   />
                 </div>
-                <div>
+                <div {...fieldErrorProps("last_name")} className={cn(erroredField === "last_name" && erroredFieldClassName)}>
                   <Label htmlFor="last_name" className="mb-1.5">
                     Last name
                     <Required />
@@ -330,16 +514,20 @@ export default function JobApplicationForm({
                   <Input
                     id="last_name"
                     name="last_name"
+                    autoComplete="family-name"
                     required
                     value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
+                    onChange={(e) => {
+                      setLastName(e.target.value);
+                      clearFieldError("last_name");
+                    }}
                     className={fieldClassName}
                   />
                 </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div>
+                <div {...fieldErrorProps("email")} className={cn(erroredField === "email" && erroredFieldClassName)}>
                   <Label htmlFor="email" className="mb-1.5">
                     Personal email
                     <Required />
@@ -348,13 +536,17 @@ export default function JobApplicationForm({
                     id="email"
                     name="email"
                     type="email"
+                    autoComplete="email"
                     required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      clearFieldError("email");
+                    }}
                     className={fieldClassName}
                   />
                 </div>
-                <div>
+                <div {...fieldErrorProps("school_email")} className={cn(erroredField === "school_email" && erroredFieldClassName)}>
                   <Label htmlFor="school_email" className="mb-1.5">
                     School email
                     <Required />
@@ -363,15 +555,23 @@ export default function JobApplicationForm({
                     id="school_email"
                     name="school_email"
                     type="email"
+                    // Deliberately not autoComplete="email" -- this is a
+                    // second, distinct address from Personal email above,
+                    // and sharing the same autocomplete category would
+                    // invite the browser to fill the same value into both.
+                    autoComplete="off"
                     required
                     value={schoolEmail}
-                    onChange={(e) => setSchoolEmail(e.target.value)}
+                    onChange={(e) => {
+                      setSchoolEmail(e.target.value);
+                      clearFieldError("school_email");
+                    }}
                     className={fieldClassName}
                   />
                 </div>
               </div>
 
-              <div>
+              <div {...fieldErrorProps("phone")} className={cn(erroredField === "phone" && erroredFieldClassName)}>
                 <Label htmlFor="phone" className="mb-1.5">
                   Phone number
                   <Required />
@@ -380,10 +580,14 @@ export default function JobApplicationForm({
                   id="phone"
                   name="phone"
                   type="tel"
+                  autoComplete="tel"
                   required
                   placeholder="(803) 555-0100"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => {
+                    setPhone(e.target.value);
+                    clearFieldError("phone");
+                  }}
                   className={fieldClassName}
                 />
               </div>
@@ -391,16 +595,23 @@ export default function JobApplicationForm({
 
             <FormSection title="Education">
               <div className="grid gap-6 sm:grid-cols-2">
-                <div>
+                <div {...fieldErrorProps("school")} className={cn(erroredField === "school" && erroredFieldClassName)}>
                   <Label>
                     School
                     <Required />
                   </Label>
                   <div className="mt-2">
-                    <RadioWithOther name="school" options={SCHOOLS} otherPlaceholder="Enter your school" allowOther={false} />
+                    <RadioWithOther
+                      name="school"
+                      options={SCHOOLS}
+                      otherPlaceholder="Enter your school"
+                      allowOther={false}
+                      resetVersion={resetVersion}
+                      onChangeClearError={() => clearFieldError("school")}
+                    />
                   </div>
                 </div>
-                <div>
+                <div {...fieldErrorProps("year_of_study")} className={cn(erroredField === "year_of_study" && erroredFieldClassName)}>
                   <Label>
                     Year of study
                     <Required />
@@ -410,13 +621,15 @@ export default function JobApplicationForm({
                       name="year_of_study"
                       options={YEAR_OF_STUDY_OPTIONS}
                       otherPlaceholder="Enter your year of study"
+                      resetVersion={resetVersion}
+                      onChangeClearError={() => clearFieldError("year_of_study")}
                     />
                   </div>
                 </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div>
+                <div {...fieldErrorProps("major")} className={cn(erroredField === "major" && erroredFieldClassName)}>
                   <Label htmlFor="major" className="mb-1.5">
                     Major / Field of study
                     <Required />
@@ -426,11 +639,14 @@ export default function JobApplicationForm({
                     name="major"
                     required
                     value={major}
-                    onChange={(e) => setMajor(e.target.value)}
+                    onChange={(e) => {
+                      setMajor(e.target.value);
+                      clearFieldError("major");
+                    }}
                     className={fieldClassName}
                   />
                 </div>
-                <div>
+                <div {...fieldErrorProps("gpa")} className={cn(erroredField === "gpa" && erroredFieldClassName)}>
                   <Label htmlFor="gpa" className="mb-1.5">
                     GPA (4.0 scale)
                   </Label>
@@ -442,7 +658,10 @@ export default function JobApplicationForm({
                     min="0"
                     max="4"
                     value={gpa}
-                    onChange={(e) => setGpa(e.target.value)}
+                    onChange={(e) => {
+                      setGpa(e.target.value);
+                      clearFieldError("gpa");
+                    }}
                     className={fieldClassName}
                   />
                 </div>
@@ -460,6 +679,9 @@ export default function JobApplicationForm({
                       <Required />
                     </>
                   }
+                  errored={erroredField === "resume"}
+                  resetVersion={resetVersion}
+                  onChangeClearError={() => clearFieldError("resume")}
                 />
                 <FileUploadField
                   id="transcript"
@@ -470,11 +692,40 @@ export default function JobApplicationForm({
                       <Required />
                     </>
                   }
+                  errored={erroredField === "transcript"}
+                  resetVersion={resetVersion}
+                  onChangeClearError={() => clearFieldError("transcript")}
                 />
               </div>
             </FormSection>
 
             <FormSection title="Team preferences">
+              <div className="mb-6 flex flex-col gap-4">
+                {TEAM_DESCRIPTIONS.map((team) => (
+                  <div key={team.title}>
+                    <p className="m-0 text-sm font-semibold text-[var(--ink)]">{team.title}</p>
+                    <p className="mt-1 mb-0 text-sm text-[var(--ink-muted)]">{team.description}</p>
+                    {team.subTracks && (
+                      <div className="mt-2 flex flex-col gap-2 border-l-2 border-[var(--line)] pl-3">
+                        {team.subTracks.map((subTrack) => (
+                          <div key={subTrack.title}>
+                            <p className="m-0 text-sm font-semibold text-[var(--ink)]">{subTrack.title}</p>
+                            <p className="mt-1 mb-0 text-sm text-[var(--ink-muted)]">{subTrack.description}</p>
+                            {subTrack.items && (
+                              <ul className="mt-1 mb-0 list-disc pl-5 text-sm text-[var(--ink-muted)]">
+                                {subTrack.items.map((item) => (
+                                  <li key={item}>{item}</li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
               <div className="rounded-md border-[var(--line)]">
                 <p className="mb-4 text-sm text-[var(--ink-muted)]">
                   Rank 3 teams in order of preference. All three choices are required, and each
@@ -485,22 +736,42 @@ export default function JobApplicationForm({
                     const isTeam6 = value === TEAM_6_PARENT_TITLE;
                     const resolvedValue = isTeam6 ? subTrack : value;
                     return (
-                      <div key={name}>
+                      <div
+                        key={name}
+                        {...fieldErrorProps(name)}
+                        className={cn(erroredField === name && erroredFieldClassName)}
+                      >
                         <Label htmlFor={name} className="mb-1.5">
                           {label}
                           <Required />
                         </Label>
                         <Select
-                          value={value}
+                          value={value || UNSELECTED_TEAM}
                           onValueChange={(v) => {
-                            setValue(v as string);
+                            const next = v === UNSELECTED_TEAM ? "" : (v as string);
+                            setValue(next);
                             setSubTrack("");
+                            clearFieldError(name);
                           }}
                         >
                           <SelectTrigger id={name} className={fieldClassName}>
-                            <SelectValue placeholder="Choose a team" />
+                            {/* base-ui's SelectValue can't infer a plain-text
+                                label from a matched SelectItem on its own (see
+                                the same note in ApplicationDetail.tsx/
+                                JobForm.tsx) -- without this render-prop form,
+                                picking the blank sentinel item below would
+                                show the raw "__unselected__" value instead of
+                                "Choose a team". */}
+                            <SelectValue placeholder="Choose a team">
+                              {(v: string) => (v === UNSELECTED_TEAM ? "Choose a team" : v)}
+                            </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
+                            {/* Lets an applicant re-open a dropdown that already
+                                has a choice and deselect it back to blank,
+                                rather than only being able to swap directly to
+                                another team. */}
+                            <SelectItem value={UNSELECTED_TEAM}>Choose a team</SelectItem>
                             {availableTeams(exclude).map((team) => (
                               <SelectItem key={team} value={team}>
                                 {team}
@@ -515,8 +786,10 @@ export default function JobApplicationForm({
                             ("Logistics and Operations / AV Production") isn't even a
                             storable preference. This hidden input is the one thing that
                             actually gets submitted under team_choice_N, resolved to the
-                            sub-track when team 6 is picked. */}
-                        <input type="hidden" name={name} value={resolvedValue} />
+                            sub-track when team 6 is picked. Keyed on
+                            resetVersion for the same reason RadioWithOther's
+                            hidden input is -- see that component's comment. */}
+                        <input type="hidden" key={`${name}-${resetVersion}`} name={name} value={resolvedValue} />
                         {isTeam6 && (
                           <div className="mt-2">
                             <Label className="mb-1.5">
@@ -558,7 +831,13 @@ export default function JobApplicationForm({
                 const value = eligibilityAnswers[key];
                 return (
                   <div key={key}>
-                    <Label htmlFor={key} className="mb-1.5">
+                    {/* No htmlFor -- this question labels the whole
+                        Yes/No group below, not one single control, so
+                        there's no one element id it could correctly point
+                        at (each RadioGroupItem has its own label already).
+                        Matches the School/Year of study Labels above,
+                        which don't use htmlFor for the same reason. */}
+                    <Label className="mb-1.5">
                       {config.question}
                       <Required />
                     </Label>
@@ -580,8 +859,9 @@ export default function JobApplicationForm({
                     </RadioGroup>
                     {/* Same reasoning as the team Select above: no `name` on the
                         RadioGroup itself, a separate controlled hidden input carries
-                        the submitted value so a failed submission can't wipe it. */}
-                    <input type="hidden" name={key} value={value} />
+                        the submitted value so a failed submission can't wipe it.
+                        Keyed on resetVersion for the same reason too. */}
+                    <input type="hidden" key={`${key}-${resetVersion}`} name={key} value={value} />
                   </div>
                 );
               })}

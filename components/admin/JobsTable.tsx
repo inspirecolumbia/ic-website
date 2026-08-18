@@ -565,7 +565,13 @@ export default function JobsTable({
         </div>
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter((v as DisplayStatus | "all") ?? "all")}>
           <SelectTrigger className="w-[160px]">
-            <SelectValue />
+            {/* base-ui's SelectValue can't infer a plain-text label from a
+                matched SelectItem's children on its own -- without this
+                render-prop form, this showed the raw status value (e.g.
+                "draft") instead of its label ("Draft"). */}
+            <SelectValue>
+              {(v: DisplayStatus | "all") => statusFilters.find((f) => f.value === v)?.label ?? v}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {statusFilters.map((f) => (

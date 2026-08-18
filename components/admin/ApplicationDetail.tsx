@@ -12,8 +12,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import DocumentViewer from "@/components/admin/DocumentViewer";
 import ReviewerNotesThread, { type ReviewerNoteEntry } from "@/components/admin/ReviewerNotesThread";
+import EmailApplicantDialog from "@/components/admin/EmailApplicantDialog";
 import { APPLICATION_STATUSES, applicationStatusLabel, ordinal, type Application } from "@/lib/applications";
 import { SCREENING_QUESTIONS } from "@/lib/screening";
 import { formatDateTime } from "@/lib/history";
@@ -23,6 +34,7 @@ type ApplicationDocument = Database["public"]["Tables"]["application_documents"]
 type TeamPreference = Database["public"]["Tables"]["application_team_preferences"]["Row"];
 type ScreeningAnswer = Database["public"]["Tables"]["application_screening_answers"]["Row"];
 type StatusHistoryEntry = Database["public"]["Tables"]["application_status_history"]["Row"];
+type EmailLogEntry = Database["public"]["Tables"]["application_email_log"]["Row"];
 
 const statusDotClass: Record<string, string> = {
   submitted: "bg-[var(--admin-text-muted)]",
@@ -103,6 +115,7 @@ export default function ApplicationDetail({
   reviewerNotes,
   currentUserId,
   currentUserRole,
+  emailLog,
 }: {
   application: Application;
   jobTitle: string;
@@ -114,12 +127,15 @@ export default function ApplicationDetail({
   reviewerNotes: ReviewerNoteEntry[];
   currentUserId: string | null;
   currentUserRole: "staff" | "admin";
+  emailLog: EmailLogEntry[];
 }) {
   const [status, setStatus] = useState(application.status);
   const [savedStatus, setSavedStatus] = useState(application.status);
   const [statusPending, startStatusTransition] = useTransition();
   const [statusError, setStatusError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [confirmStatusOpen, setConfirmStatusOpen] = useState(false);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!successMessage) return;
@@ -127,10 +143,11 @@ export default function ApplicationDetail({
     return () => clearTimeout(timeout);
   }, [successMessage]);
 
-  function saveStatus() {
+  function confirmedSaveStatus() {
     setStatusError(null);
     startStatusTransition(() => {
       updateApplicationStatus(application.id, status).then((result) => {
+        setConfirmStatusOpen(false);
         if (result && "error" in result) {
           setStatusError(result.error);
         } else {
@@ -326,7 +343,12 @@ export default function ApplicationDetail({
                   ))}
                 </SelectContent>
               </Select>
-              <Button type="button" size="sm" disabled={statusPending || status === savedStatus} onClick={saveStatus}>
+              <Button
+                type="button"
+                size="sm"
+                disabled={statusPending || status === savedStatus}
+                onClick={() => setConfirmStatusOpen(true)}
+              >
                 {statusPending ? "Saving..." : "Save status"}
               </Button>
               {statusError && (
@@ -334,7 +356,35 @@ export default function ApplicationDetail({
                   {statusError}
                 </p>
               )}
+              <Button type="button" variant="outline" size="sm" onClick={() => setEmailDialogOpen(true)}>
+                Email applicant
+              </Button>
             </div>
+
+            <AlertDialog open={confirmStatusOpen} onOpenChange={setConfirmStatusOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Change status?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This changes the application status from {applicationStatusLabel(savedStatus)} to{" "}
+                    {applicationStatusLabel(status)}. This is internal only and never emails the applicant.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={statusPending}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction disabled={statusPending} onClick={confirmedSaveStatus}>
+                    {statusPending ? "Saving..." : "Save status"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <EmailApplicantDialog
+              open={emailDialogOpen}
+              onOpenChange={setEmailDialogOpen}
+              applicationId={application.id}
+              applicantName={`${application.firstName} ${application.lastName}`}
+            />
 
             <h3 className="mb-2 mt-4 text-sm font-medium text-[var(--admin-text)]">History</h3>
             {statusHistory.length === 0 ? (
@@ -351,6 +401,22 @@ export default function ApplicationDetail({
                     {formatDateTime(entry.created_at)}:{" "}
                     {entry.old_status ? `${applicationStatusLabel(entry.old_status)} → ` : ""}
                     {applicationStatusLabel(entry.new_status)}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <h3 className="mb-2 mt-4 text-sm font-medium text-[var(--admin-text)]">Emails sent</h3>
+            {emailLog.length === 0 ? (
+              <p className="text-sm text-[var(--admin-text-muted)]">No emails sent to this applicant yet.</p>
+            ) : (
+              // Same fixed-height/scroll/newest-first treatment as Status
+              // History above, for the same reason -- a long-lived
+              // application shouldn't keep growing this column.
+              <ul className="m-0 flex max-h-40 list-none flex-col gap-1 overflow-y-auto p-0 text-xs text-[var(--admin-text-muted)]">
+                {emailLog.map((entry) => (
+                  <li key={entry.id}>
+                    {formatDateTime(entry.created_at)}: &quot;{entry.template_name}&quot;
                   </li>
                 ))}
               </ul>

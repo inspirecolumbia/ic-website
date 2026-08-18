@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { createClerkSupabaseClient } from "@/lib/supabase/clerk";
 import { isValidFromAddress } from "@/lib/settings";
+import { listPublishedEmailTemplates, type EmailTemplateSummary } from "@/lib/email/send";
 
 export async function updateResendFromAddress(address: string): Promise<{ error: string } | null> {
   const { sessionClaims } = await auth();
@@ -23,5 +24,34 @@ export async function updateResendFromAddress(address: string): Promise<{ error:
   // invalidated, not just this settings page -- mass email displays it too.
   revalidatePath("/admin/settings");
   revalidatePath("/admin/applications/mass-email");
+  return null;
+}
+
+export async function listStaffAlertTemplateOptions(): Promise<
+  { templates: EmailTemplateSummary[] } | { error: string }
+> {
+  const { sessionClaims } = await auth();
+  const role = sessionClaims?.user_role as string | undefined;
+  if (role !== "admin") return { error: "Only admins can change this." };
+
+  try {
+    return { templates: await listPublishedEmailTemplates() };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to load templates." };
+  }
+}
+
+// null clears it back to the built-in plain-text staff alert message (see
+// staffAlertEmail in lib/email/templates.ts).
+export async function updateStaffAlertTemplateId(templateId: string | null): Promise<{ error: string } | null> {
+  const { sessionClaims } = await auth();
+  const role = sessionClaims?.user_role as string | undefined;
+  if (role !== "admin") return { error: "Only admins can change this." };
+
+  const supabase = createClerkSupabaseClient();
+  const { error } = await supabase.from("app_settings").update({ staff_alert_template_id: templateId }).eq("id", 1);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/settings");
   return null;
 }

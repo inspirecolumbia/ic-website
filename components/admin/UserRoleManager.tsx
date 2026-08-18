@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { MoreVertical } from "lucide-react";
 import { promoteUser, restoreUserAccess, revokeUserAccess } from "@/app/admin/users/actions";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -19,6 +19,13 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -112,56 +119,58 @@ function UserRow({
         )}
       </TableCell>
       <TableCell className="text-xs text-[var(--admin-text-muted)]">{formatDateTime(user.createdAt)}</TableCell>
-      <TableCell>
+      <TableCell className="text-right">
         {isAdmin ? (
           <span className="text-xs text-[var(--admin-text-muted)]">Managed in Clerk dashboard</span>
         ) : (
-          <div className="flex flex-wrap items-center gap-2">
-            {user.banned ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={pending}
-                onClick={() => runAction(() => restoreUserAccess(user.id), "Access restored.")}
-              >
-                Restore access
-              </Button>
-            ) : (
-              <>
-                {user.role !== "member" && (
-                  <Button
+          // text-right on the cell alone doesn't reach this -- DropdownMenu's
+          // root renders a block-level wrapper that doesn't inherit text
+          // alignment, same as JobsTable's Actions column already accounts
+          // for. An explicit flex/justify-end wrapper is what actually
+          // right-aligns the trigger button.
+          <div className="flex justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <button
                     type="button"
-                    size="sm"
-                    variant="outline"
+                    aria-label={`More actions for ${user.name}`}
                     disabled={pending}
-                    onClick={() => runAction(() => promoteUser(user.id, "member"), "Set as Member.")}
+                    className="flex size-8 items-center justify-center rounded-md text-[var(--admin-text-muted)] outline-none hover:bg-[var(--admin-surface-hover)] hover:text-[var(--admin-text)] focus-visible:ring-2 focus-visible:ring-[var(--admin-brand)] disabled:pointer-events-none disabled:opacity-40"
                   >
-                    Set as Member
-                  </Button>
+                    <MoreVertical className="size-4" />
+                  </button>
+                }
+              />
+              <DropdownMenuContent align="end">
+                {user.banned ? (
+                  <DropdownMenuItem onClick={() => runAction(() => restoreUserAccess(user.id), "Access restored.")}>
+                    Restore access
+                  </DropdownMenuItem>
+                ) : (
+                  <>
+                    {user.role !== "member" && (
+                      <DropdownMenuItem
+                        onClick={() => runAction(() => promoteUser(user.id, "member"), "Set as Member.")}
+                      >
+                        Set as Member
+                      </DropdownMenuItem>
+                    )}
+                    {user.role !== "staff" && (
+                      <DropdownMenuItem
+                        onClick={() => runAction(() => promoteUser(user.id, "staff"), "Set as Staff.")}
+                      >
+                        Set as Staff
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onClick={() => setConfirmRevoke(true)}>
+                      Revoke access
+                    </DropdownMenuItem>
+                  </>
                 )}
-                {user.role !== "staff" && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={pending}
-                    onClick={() => runAction(() => promoteUser(user.id, "staff"), "Set as Staff.")}
-                  >
-                    Set as Staff
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="destructive"
-                  disabled={pending}
-                  onClick={() => setConfirmRevoke(true)}
-                >
-                  Revoke access
-                </Button>
-              </>
-            )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
         {error && (
@@ -247,7 +256,17 @@ export default function UserRoleManager({
         />
         <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v ?? "all")}>
           <SelectTrigger className="w-[160px]">
-            <SelectValue />
+            {/* base-ui's SelectValue can't infer a plain-text label from a
+                matched SelectItem's children on its own -- without this
+                render-prop form, this showed the raw filter value (e.g.
+                "none") instead of its label ("No role assigned"). */}
+            <SelectValue>
+              {(v: string) =>
+                ({ all: "All roles", none: "No role assigned", member: "Member", staff: "Staff", admin: "Admin" })[
+                  v
+                ] ?? v
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All roles</SelectItem>
@@ -281,7 +300,7 @@ export default function UserRoleManager({
               <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Registered</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

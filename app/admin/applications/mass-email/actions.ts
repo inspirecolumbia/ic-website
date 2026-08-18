@@ -66,12 +66,13 @@ async function resolveApplicantRecipients(
   const supabase = createClerkSupabaseClient();
   let query = supabase
     .from("applications")
-    .select("email, first_name, last_name")
+    .select("id, email, first_name, last_name")
     .eq("status", filter.status);
   if (filter.jobId) query = query.eq("job_id", filter.jobId);
 
   const { data } = await query;
   const applicants: MassEmailApplicant[] = (data ?? []).map((row) => ({
+    applicationId: row.id,
     email: row.email,
     firstName: row.first_name,
     lastName: row.last_name,
@@ -117,6 +118,8 @@ export async function sendMassEmail(
 ): Promise<SendMassEmailResult | { error: string }> {
   const role = await requireStaffOrAdmin();
   if (typeof role !== "string") return role;
+  const { userId } = await auth();
+  if (!userId) return { error: "Not authorized." };
 
   if (input.scheduledAt && !isValidScheduledAt(input.scheduledAt)) {
     return { error: "Choose a scheduled time in the future, no more than 30 days out." };
@@ -145,11 +148,13 @@ export async function sendMassEmail(
 
   const items = recipients.map((recipient) => ({
     to: recipient.to,
+    applicationId: recipient.applicationId,
     templateId: input.templateId,
     variables: resolveRecipientVariables(recipient, template.variables, input.variables),
     ...(input.scheduledAt ? { scheduledAt: input.scheduledAt } : {}),
   }));
 
+  const supabase = createClerkSupabaseClient();
   let sentCount = 0;
   let failedCount = 0;
   for (const chunk of chunkRecipients(items)) {
@@ -157,6 +162,28 @@ export async function sendMassEmail(
       const result = await sendBatchTemplateEmails(chunk);
       sentCount += result.sentCount;
       failedCount += result.failed.length;
+
+      // Log one row per recipient this chunk actually sent to and who has
+      // a real application to attach history to -- a manually-added email
+      // with no matching applicant has nothing to log against. Best-effort:
+      // the emails already went out, a logging failure shouldn't be
+      // reported back as a send failure.
+      const failedIndexes = new Set(result.failed.map((f) => f.index));
+      const logRows = chunk
+        .map((item, index) => ({ item, index }))
+        .filter(({ item, index }) => item.applicationId && !failedIndexes.has(index))
+        .map(({ item }) => ({
+          application_id: item.applicationId as string,
+          sent_by_clerk_user_id: userId,
+          sent_by_role: role,
+          template_id: input.templateId,
+          template_name: template.name,
+          recipient_email: item.to,
+        }));
+      if (logRows.length > 0) {
+        const { error: logError } = await supabase.from("application_email_log").insert(logRows);
+        if (logError) console.error("Failed to log mass-email sends:", logError.message);
+      }
     } catch {
       // A whole chunk failing (e.g. Resend outage) still leaves any
       // earlier chunks sent -- reported as failures for this chunk rather

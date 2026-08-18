@@ -39,6 +39,63 @@ export const TEAM_PICKER_OPTIONS = [
   TEAM_6_PARENT_TITLE,
 ] as const;
 
+// Shown on the application form word for word, per the org's supplied copy
+// -- team leader names are deliberately left out here (the source copy
+// included them in parentheses next to each title), everything else is
+// verbatim. Order matches TEAM_PICKER_OPTIONS; kept as a separate list
+// rather than merged into TEAMS/TEAM_PICKER_OPTIONS since those are
+// validation-facing constants, this is display copy.
+export type TeamDescription = {
+  title: string;
+  description: string;
+  subTracks?: { title: string; description: string; items?: string[] }[];
+};
+
+export const TEAM_DESCRIPTIONS: TeamDescription[] = [
+  {
+    title: "Nonprofit Finances and Legal",
+    description:
+      "This team manages the financial backbone and operational integrity of Inspire Columbia. Responsibilities include overseeing annual event budgets, tracking revenue and expenditures, managing grant allocations, and coordinating event contracts with external venues and vendors. Members also ensure compliance with non-profit governance, legal guidelines, and insurance requirements for city-wide operations.",
+  },
+  {
+    title: "Technology and Web Development",
+    description:
+      "This team builds and maintains the digital infrastructure that powers the organization. Responsibilities include designing UI/UX for the official Inspire Columbia website, managing backend application systems, and supporting technical execution for event platforms.",
+  },
+  {
+    title: "Marketing and Press Strategy",
+    description:
+      "This team crafts the public voice of Inspire Columbia and drives attendee engagement across the city. Responsibilities include managing press releases, coordinating with local news outlets, developing media strategies, and overseeing promotional campaigns across digital channels.",
+  },
+  {
+    title: "Sponsorships and Corporate Partnerships",
+    description:
+      "This team generates the capital and community partnerships that make our events possible. Responsibilities include identifying potential corporate sponsors, pitching local businesses, securing grants, and maintaining long-term relationships with regional partners.",
+  },
+  {
+    title: "Speaker Curation and Mentorship",
+    description:
+      "This team is the heart of the event because without compelling speakers, meaningful ideas, and strong talks, there's ultimately nothing to put on the stage. Curation shapes the core content and intellectual vision of our events, most notably our TEDx events, and has a direct role in determining what our audience experiences and remembers. Responsibilities include scouting and interviewing compelling speakers, vetting and refining talk proposals, building mentorship panels, hosting speaker training and speech-review sessions, coaching speakers through stage preparation and rehearsals, and cross-checking presentations against TEDx and organizational guidelines.",
+  },
+  {
+    title: TEAM_6_PARENT_TITLE,
+    description:
+      "This team brings our events to life by managing the physical, logistical, and production details behind each experience. Responsibilities include event setup and breakdown, vendor and venue coordination, decorations and space design, AV and lighting production, crowd management, equipment management, and day-of event management.",
+    subTracks: [
+      {
+        title: "Production",
+        description:
+          "Handling audio, lighting, rigging, and broadcasting of live events, works with our production team day of event and day before event.",
+      },
+      {
+        title: "Logistics & Operations",
+        description: "Select and book 3rd party vendors for:",
+        items: ["Venue", "Food", "Stage Building / Design", "TEDx Sign Building", "Decorations / Ambiance", "Ticketing"],
+      },
+    ],
+  },
+];
+
 // Object, not a flat string array, so the form can render yes/no vs.
 // free-text differently without string-matching on question text.
 export const SCREENING_QUESTIONS = {

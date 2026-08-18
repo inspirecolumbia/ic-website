@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { availableTeams, SCREENING_QUESTIONS, TEAM_PICKER_OPTIONS, TEAMS } from "@/lib/screening";
+import {
+  availableTeams,
+  SCREENING_QUESTIONS,
+  TEAM_6_SUB_TRACKS,
+  TEAM_DESCRIPTIONS,
+  TEAM_PICKER_OPTIONS,
+  TEAMS,
+} from "@/lib/screening";
 
 describe("TEAMS", () => {
   it("has exactly 7 unique entries", () => {
@@ -34,6 +41,24 @@ describe("TEAM_PICKER_OPTIONS", () => {
     expect(TEAM_PICKER_OPTIONS).toContain("Logistics and Operations / AV Production");
     expect(TEAM_PICKER_OPTIONS).not.toContain("Production");
     expect(TEAM_PICKER_OPTIONS).not.toContain("Logistics & Operations");
+  });
+});
+
+describe("TEAM_DESCRIPTIONS", () => {
+  it("has exactly one entry per TEAM_PICKER_OPTIONS title, in the same order", () => {
+    expect(TEAM_DESCRIPTIONS.map((t) => t.title)).toEqual([...TEAM_PICKER_OPTIONS]);
+  });
+
+  it("gives every entry a non-empty description", () => {
+    for (const team of TEAM_DESCRIPTIONS) {
+      expect(team.description.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("has sub-tracks only on the team-6 parent entry, matching TEAM_6_SUB_TRACKS exactly", () => {
+    const withSubTracks = TEAM_DESCRIPTIONS.filter((t) => t.subTracks);
+    expect(withSubTracks).toHaveLength(1);
+    expect(withSubTracks[0].subTracks!.map((s) => s.title)).toEqual([...TEAM_6_SUB_TRACKS]);
   });
 });
 

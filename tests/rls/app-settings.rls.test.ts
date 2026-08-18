@@ -50,6 +50,15 @@ describe("app_settings RLS", () => {
     });
   });
 
+  it("admin can update the staff alert template id", async () => {
+    await withTransaction(async (client) => {
+      await impersonate(client, asAdmin());
+      await client.query("update public.app_settings set staff_alert_template_id = 'tmpl-123' where id = 1");
+      const { rows } = await client.query("select staff_alert_template_id from public.app_settings where id = 1");
+      expect(rows[0].staff_alert_template_id).toBe("tmpl-123");
+    });
+  });
+
   it("nobody can insert a second row", async () => {
     await withTransaction(async (client) => {
       await impersonate(client, asAdmin());
