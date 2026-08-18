@@ -3,6 +3,7 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { isPromotableRole } from "@/lib/user-roles";
+import { getUserDeleteEnabled } from "@/lib/settings";
 
 // Every action here re-checks the caller's role server-side even though the
 // page itself is already admin-gated -- same defense-in-depth reasoning as
@@ -83,6 +84,35 @@ export async function restoreUserAccess(userId: string): Promise<{ error: string
     await client.users.unbanUser(userId);
   } catch {
     return { error: "Couldn't restore that user's access. Please try again." };
+  }
+
+  revalidatePath("/admin/users");
+  return null;
+}
+
+// Permanently removes the account from Clerk, not just access -- unlike
+// revoke above, there's nothing to restore afterward. assertTargetIsNotAdmin
+// already covers a self-delete attempt: the calling admin's own Clerk
+// record has role "admin", so it gets rejected the same as any other admin
+// target, no separate userId === callerId check needed.
+export async function deleteUserAccount(userId: string): Promise<{ error: string } | null> {
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
+  // Real enforcement, not just a hidden button -- RLS/Clerk permissions
+  // already let any admin do this regardless of the toggle.
+  if (!(await getUserDeleteEnabled())) {
+    return { error: "Deleting user accounts is currently turned off in Settings." };
+  }
+
+  const client = await clerkClient();
+  const targetError = await assertTargetIsNotAdmin(client, userId);
+  if (targetError) return targetError;
+
+  try {
+    await client.users.deleteUser(userId);
+  } catch {
+    return { error: "Couldn't delete that account. Please try again." };
   }
 
   revalidatePath("/admin/users");

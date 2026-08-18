@@ -1,7 +1,13 @@
 import { auth } from "@clerk/nextjs/server";
 import AdminTabs from "@/components/admin/AdminTabs";
 import AppSettingsForm from "@/components/admin/AppSettingsForm";
-import { getResendFromAddress, getStaffAlertTemplateId } from "@/lib/settings";
+import {
+  getResendFromAddress,
+  getStaffAlertTemplateId,
+  getApplicationDeleteEnabled,
+  getUserDeleteEnabled,
+  getHistoryDeleteEnabled,
+} from "@/lib/settings";
 import { listStaffAlertTemplateOptions } from "@/app/admin/settings/actions";
 
 export default async function SettingsPage() {
@@ -18,10 +24,20 @@ export default async function SettingsPage() {
     );
   }
 
-  const [fromAddress, staffAlertTemplateId, templateOptions] = await Promise.all([
+  const [
+    fromAddress,
+    staffAlertTemplateId,
+    templateOptions,
+    applicationDeleteEnabled,
+    userDeleteEnabled,
+    historyDeleteEnabled,
+  ] = await Promise.all([
     getResendFromAddress(),
     getStaffAlertTemplateId(),
     listStaffAlertTemplateOptions(),
+    getApplicationDeleteEnabled(),
+    getUserDeleteEnabled(),
+    getHistoryDeleteEnabled(),
   ]);
 
   return (
@@ -32,6 +48,9 @@ export default async function SettingsPage() {
         initialFromAddress={fromAddress ?? ""}
         initialStaffAlertTemplateId={staffAlertTemplateId}
         templates={"templates" in templateOptions ? templateOptions.templates : []}
+        applicationDeleteEnabled={applicationDeleteEnabled}
+        userDeleteEnabled={userDeleteEnabled}
+        historyDeleteEnabled={historyDeleteEnabled}
       />
     </div>
   );

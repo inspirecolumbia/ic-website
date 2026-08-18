@@ -55,3 +55,59 @@ export async function updateStaffAlertTemplateId(templateId: string | null): Pro
   revalidatePath("/admin/settings");
   return null;
 }
+
+// A closed key -> {column, revalidate paths} map, not three near-identical
+// actions -- keeps the column actually written to Supabase always one of
+// these three literal, migration-defined names (TypeScript rejects any
+// other key at the call site), never a client-controlled string.
+const FEATURE_TOGGLES = {
+  application_delete_enabled: {
+    column: "application_delete_enabled" as const,
+    revalidate: ["/admin/settings", "/admin/applications", "/admin/applications/[id]"] as const,
+  },
+  user_delete_enabled: {
+    column: "user_delete_enabled" as const,
+    revalidate: ["/admin/settings", "/admin/users"] as const,
+  },
+  history_delete_enabled: {
+    column: "history_delete_enabled" as const,
+    revalidate: ["/admin/settings", "/admin/history"] as const,
+  },
+} satisfies Record<string, { column: string; revalidate: readonly string[] }>;
+
+export type FeatureToggleKey = keyof typeof FEATURE_TOGGLES;
+
+export async function updateFeatureToggle(key: FeatureToggleKey, enabled: boolean): Promise<{ error: string } | null> {
+  const { sessionClaims } = await auth();
+  const role = sessionClaims?.user_role as string | undefined;
+  if (role !== "admin") return { error: "Only admins can change this." };
+
+  const toggle = FEATURE_TOGGLES[key];
+  const supabase = createClerkSupabaseClient();
+  // A computed { [key]: enabled } widens to a generic string index
+  // signature even with `key` typed as the closed FeatureToggleKey union
+  // (a known TS limitation for computed properties), which Supabase's
+  // generated types then reject -- a switch keeps each branch's update
+  // payload a proper literal shape instead.
+  const update =
+    key === "application_delete_enabled"
+      ? { application_delete_enabled: enabled }
+      : key === "user_delete_enabled"
+        ? { user_delete_enabled: enabled }
+        : { history_delete_enabled: enabled };
+  const { error } = await supabase.from("app_settings").update(update).eq("id", 1);
+  if (error) return { error: error.message };
+
+  for (const path of toggle.revalidate) {
+    // /admin/applications/[id] is a dynamic route with no concrete id here
+    // -- revalidatePath needs the "layout" type to invalidate every id
+    // under it at once; a bare call with no type silently no-ops instead
+    // of matching anything.
+    if (path === "/admin/applications/[id]") {
+      revalidatePath(path, "layout");
+    } else {
+      revalidatePath(path);
+    }
+  }
+  return null;
+}

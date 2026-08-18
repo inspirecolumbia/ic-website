@@ -24,6 +24,30 @@ export async function getStaffAlertTemplateId(): Promise<string | null> {
   return data?.staff_alert_template_id ?? null;
 }
 
+// Per-capability admin feature toggles (Admin > Settings > Feature
+// toggles). Default true on a failed/null read, matching the column's own
+// default -- every action gated by one of these also independently checks
+// role === "admin" first, so failing open here never grants a non-admin
+// anything, it only means a transient read error doesn't spuriously
+// disable a capability that's supposed to be on.
+export async function getApplicationDeleteEnabled(): Promise<boolean> {
+  const supabase = createClient();
+  const { data } = await supabase.from("app_settings").select("application_delete_enabled").eq("id", 1).maybeSingle();
+  return data?.application_delete_enabled ?? true;
+}
+
+export async function getUserDeleteEnabled(): Promise<boolean> {
+  const supabase = createClient();
+  const { data } = await supabase.from("app_settings").select("user_delete_enabled").eq("id", 1).maybeSingle();
+  return data?.user_delete_enabled ?? true;
+}
+
+export async function getHistoryDeleteEnabled(): Promise<boolean> {
+  const supabase = createClient();
+  const { data } = await supabase.from("app_settings").select("history_delete_enabled").eq("id", 1).maybeSingle();
+  return data?.history_delete_enabled ?? true;
+}
+
 // Resend's `from` accepts either a bare email or a "Name <email>" form --
 // this validates either shape by pulling out just the address part.
 export function isValidFromAddress(value: string): boolean {
