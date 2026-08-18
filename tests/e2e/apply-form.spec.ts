@@ -119,6 +119,20 @@ test.describe("team preference validation", () => {
     await page.locator("#team_choice_2").click();
     await expect(page.getByRole("option", { name: "Nonprofit Finances and Legal", exact: true })).toHaveCount(0);
   });
+
+  test("a dropdown's own \"Choose a team\" option deselects it back to blank", async ({ page }) => {
+    await page.locator("#team_choice_1").click();
+    await page.getByRole("option", { name: "Nonprofit Finances and Legal", exact: true }).click();
+    await expect(page.locator("#team_choice_1")).toContainText("Nonprofit Finances and Legal");
+
+    await page.locator("#team_choice_1").click();
+    await page.getByRole("option", { name: "Choose a team", exact: true }).click();
+    await expect(page.locator("#team_choice_1")).toContainText("Choose a team");
+
+    // Deselecting it also frees the team back up for the other dropdowns.
+    await page.locator("#team_choice_2").click();
+    await expect(page.getByRole("option", { name: "Nonprofit Finances and Legal", exact: true })).toBeVisible();
+  });
 });
 
 test.describe("other server-side validation", () => {

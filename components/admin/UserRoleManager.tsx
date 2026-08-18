@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { MoreVertical } from "lucide-react";
 import { promoteUser, restoreUserAccess, revokeUserAccess } from "@/app/admin/users/actions";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -19,6 +19,13 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -116,53 +123,48 @@ function UserRow({
         {isAdmin ? (
           <span className="text-xs text-[var(--admin-text-muted)]">Managed in Clerk dashboard</span>
         ) : (
-          <div className="flex flex-wrap items-center gap-2">
-            {user.banned ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={pending}
-                onClick={() => runAction(() => restoreUserAccess(user.id), "Access restored.")}
-              >
-                Restore access
-              </Button>
-            ) : (
-              <>
-                {user.role !== "member" && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={pending}
-                    onClick={() => runAction(() => promoteUser(user.id, "member"), "Set as Member.")}
-                  >
-                    Set as Member
-                  </Button>
-                )}
-                {user.role !== "staff" && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={pending}
-                    onClick={() => runAction(() => promoteUser(user.id, "staff"), "Set as Staff.")}
-                  >
-                    Set as Staff
-                  </Button>
-                )}
-                <Button
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <button
                   type="button"
-                  size="sm"
-                  variant="destructive"
+                  aria-label={`More actions for ${user.name}`}
                   disabled={pending}
-                  onClick={() => setConfirmRevoke(true)}
+                  className="flex size-8 items-center justify-center rounded-md text-[var(--admin-text-muted)] outline-none hover:bg-[var(--admin-surface-hover)] hover:text-[var(--admin-text)] focus-visible:ring-2 focus-visible:ring-[var(--admin-brand)] disabled:pointer-events-none disabled:opacity-40"
                 >
-                  Revoke access
-                </Button>
-              </>
-            )}
-          </div>
+                  <MoreVertical className="size-4" />
+                </button>
+              }
+            />
+            <DropdownMenuContent align="end">
+              {user.banned ? (
+                <DropdownMenuItem onClick={() => runAction(() => restoreUserAccess(user.id), "Access restored.")}>
+                  Restore access
+                </DropdownMenuItem>
+              ) : (
+                <>
+                  {user.role !== "member" && (
+                    <DropdownMenuItem
+                      onClick={() => runAction(() => promoteUser(user.id, "member"), "Set as Member.")}
+                    >
+                      Set as Member
+                    </DropdownMenuItem>
+                  )}
+                  {user.role !== "staff" && (
+                    <DropdownMenuItem
+                      onClick={() => runAction(() => promoteUser(user.id, "staff"), "Set as Staff.")}
+                    >
+                      Set as Staff
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" onClick={() => setConfirmRevoke(true)}>
+                    Revoke access
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         {error && (
           <p role="alert" className="mt-1 text-xs text-[var(--admin-danger)]">

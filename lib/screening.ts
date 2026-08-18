@@ -85,12 +85,12 @@ export const TEAM_DESCRIPTIONS: TeamDescription[] = [
       {
         title: "Production",
         description:
-          "Handling Audio, Lighting, Rigging, Broadcasting of live events, works with our production team day of event and day before event.",
+          "Handling audio, lighting, rigging, and broadcasting of live events, works with our production team day of event and day before event.",
       },
       {
         title: "Logistics & Operations",
         description: "Select and book 3rd party vendors for:",
-        items: ["Venue", "Food", "Stage building / Design", "TEDx Sign building", "Decorations/Ambiance", "Ticketing"],
+        items: ["Venue", "Food", "Stage Building / Design", "TEDx Sign Building", "Decorations / Ambiance", "Ticketing"],
       },
     ],
   },

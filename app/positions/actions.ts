@@ -16,7 +16,7 @@ import {
 } from "@/lib/email/templates";
 import type { Database } from "@/lib/database.types";
 
-export type ApplicationFormState = { error: string } | { ok: true } | null;
+export type ApplicationFormState = { error: string; field?: string } | { ok: true } | null;
 
 function splitTeamPreferences(formData: FormData) {
   return ["team_choice_1", "team_choice_2", "team_choice_3"]
@@ -51,9 +51,11 @@ export async function submitApplication(
   const resumeFile = formData.get("resume") as File | null;
   const transcriptFile = formData.get("transcript") as File | null;
 
-  if (!resumeFile || resumeFile.size === 0) return { error: "A resume upload is required." };
+  if (!resumeFile || resumeFile.size === 0) {
+    return { error: "A resume upload is required.", field: "resume" };
+  }
   if (!transcriptFile || transcriptFile.size === 0) {
-    return { error: "An unofficial transcript upload is required." };
+    return { error: "An unofficial transcript upload is required.", field: "transcript" };
   }
 
   try {
@@ -62,13 +64,20 @@ export async function submitApplication(
     // successful upload (e.g. a later validation error) can leave an
     // orphaned Storage file with no referencing row -- accepted for this
     // branch, no cleanup job in scope.
-    const resumeUpload = await uploadApplicationDocument(supabase, applicationId, "resume", resumeFile);
-    const transcriptUpload = await uploadApplicationDocument(
-      supabase,
-      applicationId,
-      "transcript",
-      transcriptFile
-    );
+    let resumeUpload: Awaited<ReturnType<typeof uploadApplicationDocument>>;
+    let transcriptUpload: Awaited<ReturnType<typeof uploadApplicationDocument>>;
+    try {
+      resumeUpload = await uploadApplicationDocument(supabase, applicationId, "resume", resumeFile);
+    } catch (err) {
+      if (err instanceof ApplicationUploadError) return { error: err.message, field: "resume" };
+      throw err;
+    }
+    try {
+      transcriptUpload = await uploadApplicationDocument(supabase, applicationId, "transcript", transcriptFile);
+    } catch (err) {
+      if (err instanceof ApplicationUploadError) return { error: err.message, field: "transcript" };
+      throw err;
+    }
 
     const gpaRaw = formData.get("gpa") as string | null;
 
@@ -111,6 +120,7 @@ export async function submitApplication(
       if (error.code === "23505") {
         return {
           error: "You've already submitted an application for this position with this email address.",
+          field: "email",
         };
       }
       return { error: "Something went wrong submitting your application. Please try again." };
@@ -144,8 +154,10 @@ export async function submitApplication(
 
     return { ok: true };
   } catch (err) {
-    if (err instanceof ApplicationValidationError || err instanceof ApplicationUploadError) {
-      return { error: err.message };
+    // ApplicationUploadError from either upload call is already handled
+    // locally above (tagged with the right field) and never reaches here.
+    if (err instanceof ApplicationValidationError) {
+      return { error: err.message, field: err.field };
     }
     return { error: "Something went wrong submitting your application. Please try again." };
   }

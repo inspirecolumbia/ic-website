@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -52,9 +52,17 @@ export default function EmailApplicantDialog({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
 
-  function handleOpenChange(next: boolean) {
-    onOpenChange(next);
-    if (next && templates === null) {
+  // Base-ui's Dialog only calls its own `onOpenChange` in response to the
+  // dialog's own internal close/open gestures (Escape, overlay click, the
+  // close button) -- not when a parent flips the `open` prop externally,
+  // which is exactly how this dialog opens (the "Email applicant" button in
+  // ApplicationDetail.tsx sets state directly). Relying on onOpenChange to
+  // trigger the template fetch meant it never fired on the real open path,
+  // leaving the dialog stuck showing neither a loading state nor a
+  // template list. Watching `open` directly in an effect fires regardless
+  // of how it became true.
+  useEffect(() => {
+    if (open && templates === null) {
       startLoadTemplates(async () => {
         const res = await listMassEmailTemplates();
         if ("error" in res) {
@@ -64,6 +72,10 @@ export default function EmailApplicantDialog({
         setTemplates(res.templates);
       });
     }
+  }, [open, templates]);
+
+  function handleOpenChange(next: boolean) {
+    onOpenChange(next);
     if (!next) {
       setResult(null);
       setError(null);
