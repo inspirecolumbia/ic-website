@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.15"
+  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -38,16 +43,19 @@ export type Database = {
         Row: {
           id: number
           resend_from_address: string | null
+          staff_alert_template_id: string | null
           updated_at: string
         }
         Insert: {
           id?: number
           resend_from_address?: string | null
+          staff_alert_template_id?: string | null
           updated_at?: string
         }
         Update: {
           id?: number
           resend_from_address?: string | null
+          staff_alert_template_id?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -80,6 +88,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "application_documents_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      application_email_log: {
+        Row: {
+          application_id: string
+          created_at: string
+          id: string
+          recipient_email: string
+          sent_by_clerk_user_id: string
+          sent_by_role: string | null
+          template_id: string
+          template_name: string
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          id?: string
+          recipient_email: string
+          sent_by_clerk_user_id: string
+          sent_by_role?: string | null
+          template_id: string
+          template_name: string
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          id?: string
+          recipient_email?: string
+          sent_by_clerk_user_id?: string
+          sent_by_role?: string | null
+          template_id?: string
+          template_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_email_log_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "applications"
@@ -647,4 +696,3 @@ export const Constants = {
     },
   },
 } as const
-

@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { TEAM_6_PARENT_TITLE } from "@/lib/screening";
 import {
   fillApplicationForm,
+  schoolEmailFor,
   submit,
   teamPreferencesFor,
   uniqueEmail,
@@ -110,6 +111,15 @@ test.describe("team preference validation", () => {
     await submit(page);
 
     await expect(page.getByText("Please select 3 team preferences.")).toBeVisible();
+    // Reproduces a real reported bug: this error's field used to be
+    // hardcoded to "team_choice_1" regardless of which slot was actually
+    // the problem, so fixing an unrelated 1st choice highlighted instead
+    // of the real culprit (here, the missing sub-track under the 3rd
+    // choice). The field is now derived from which team_choice_N slot
+    // was actually submitted blank, so the 3rd choice -- which contains
+    // the "Choose a sub-track" section -- is the one that gets flagged.
+    await expect(page.locator('[data-field="team_choice_3"]')).toHaveClass(/ring-red-400/);
+    await expect(page.locator('[data-field="team_choice_1"]')).not.toHaveClass(/ring-red-400/);
   });
 
   test("excludes an already-picked team from the other two dropdowns", async ({ page }) => {
@@ -118,6 +128,20 @@ test.describe("team preference validation", () => {
 
     await page.locator("#team_choice_2").click();
     await expect(page.getByRole("option", { name: "Nonprofit Finances and Legal", exact: true })).toHaveCount(0);
+  });
+
+  test("a dropdown's own \"Choose a team\" option deselects it back to blank", async ({ page }) => {
+    await page.locator("#team_choice_1").click();
+    await page.getByRole("option", { name: "Nonprofit Finances and Legal", exact: true }).click();
+    await expect(page.locator("#team_choice_1")).toContainText("Nonprofit Finances and Legal");
+
+    await page.locator("#team_choice_1").click();
+    await page.getByRole("option", { name: "Choose a team", exact: true }).click();
+    await expect(page.locator("#team_choice_1")).toContainText("Choose a team");
+
+    // Deselecting it also frees the team back up for the other dropdowns.
+    await page.locator("#team_choice_2").click();
+    await expect(page.getByRole("option", { name: "Nonprofit Finances and Legal", exact: true })).toBeVisible();
   });
 });
 
@@ -132,6 +156,35 @@ test.describe("other server-side validation", () => {
     await submit(page);
 
     await expect(page.getByText(/school email must be a/i)).toBeVisible();
+  });
+
+  test("team preferences and files survive a resubmit after fixing an unrelated error", async ({ page }) => {
+    // Reproduces a real reported bug: React's automatic post-action
+    // form.reset() (after any failed submission) force-clears the DOM
+    // value of every hidden input, including the team-preference ones,
+    // even though the React state driving them never changed and the UI
+    // still visually shows all 3 picked. Without JobApplicationForm's
+    // resetVersion-keyed remount fix, a resubmit after fixing an unrelated
+    // field would still fail with "Please select 3 team preferences" even
+    // though all 3 are genuinely selected on screen.
+    //
+    // File inputs are always uncontrolled and get cleared by that same
+    // native reset -- a first fix (re-syncing FileUploadField's displayed
+    // file from the real, now-empty DOM) stopped it from lying about
+    // having a file, but still genuinely lost the attachment on every
+    // error, forcing a reattach after ANY validation failure, not just a
+    // real file problem. The real fix reattaches the retained File object
+    // to the input via DataTransfer after each reset, so this resubmit
+    // deliberately does NOT reselect files -- if that regresses, this
+    // fails with "a resume upload is required" instead of succeeding.
+    await fillApplicationForm(page, { schoolEmail: "ada@gmail.com" });
+    await submit(page);
+    await expect(page.getByText(/school email must be a/i)).toBeVisible();
+
+    await page.locator("#school_email").fill(schoolEmailFor("ada"));
+    await submit(page);
+
+    await expect(page.getByRole("heading", { name: "Application submitted" })).toBeVisible();
   });
 
   test("rejects a second application from the same email for the same job", async ({ page }) => {

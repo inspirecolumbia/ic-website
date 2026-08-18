@@ -11,6 +11,7 @@ const BATCH_CHUNK_SIZE = 100;
 const AUTO_FILL_KEYS = new Set(["first_name", "last_name"]);
 
 export type MassEmailApplicant = {
+  applicationId: string;
   email: string;
   firstName: string;
   lastName: string;
@@ -19,7 +20,9 @@ export type MassEmailApplicant = {
 export type MassEmailRecipient = {
   to: string;
   // Known only for applicants pulled from the database -- an
-  // additional/manual email has no row to read a name from.
+  // additional/manual email has no row to read a name from, and no
+  // application to log a send against.
+  applicationId: string | null;
   firstName: string | null;
   lastName: string | null;
 };
@@ -59,12 +62,17 @@ export function buildMassEmailRecipients(
   for (const applicant of applicants) {
     const email = applicant.email.trim().toLowerCase();
     if (!email || seen.has(email)) continue;
-    seen.set(email, { to: email, firstName: applicant.firstName, lastName: applicant.lastName });
+    seen.set(email, {
+      to: email,
+      applicationId: applicant.applicationId,
+      firstName: applicant.firstName,
+      lastName: applicant.lastName,
+    });
   }
   for (const email of additionalEmails) {
     const normalized = email.trim().toLowerCase();
     if (!normalized || seen.has(normalized)) continue;
-    seen.set(normalized, { to: normalized, firstName: null, lastName: null });
+    seen.set(normalized, { to: normalized, applicationId: null, firstName: null, lastName: null });
   }
   return [...seen.values()];
 }

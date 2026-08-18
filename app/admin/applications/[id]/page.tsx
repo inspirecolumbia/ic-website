@@ -33,6 +33,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
     { data: screeningAnswers },
     { data: statusHistory },
     { data: reviewerNotes },
+    { data: emailLog },
   ] = await Promise.all([
     supabase.from("applications").select("*").eq("id", id).maybeSingle(),
     supabase.from("application_documents").select("*").eq("application_id", id),
@@ -52,6 +53,11 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
     // deleted it (see supabase/migrations/20260814180000_reviewer_notes_edit_delete_rpcs.sql).
     // Direct SELECT on the table is revoked for authenticated entirely.
     supabase.rpc("list_reviewer_notes", { p_application_id: id }),
+    supabase
+      .from("application_email_log")
+      .select("*")
+      .eq("application_id", id)
+      .order("created_at", { ascending: false }),
   ]);
 
   if (!row) notFound();
@@ -92,6 +98,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
         }))}
         currentUserId={userId}
         currentUserRole={role as "staff" | "admin"}
+        emailLog={emailLog ?? []}
       />
     </div>
   );

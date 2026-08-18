@@ -177,7 +177,13 @@ export default function ApplicationsManager({
         </div>
         <Select value={jobFilter} onValueChange={(v) => { setJobFilter(v ?? "all"); setPage(1); }}>
           <SelectTrigger className="w-[200px]">
-            <SelectValue />
+            {/* base-ui's SelectValue can't infer a plain-text label from a
+                matched SelectItem's children on its own -- without this
+                render-prop form, picking a job showed its raw id instead of
+                its title. */}
+            <SelectValue>
+              {(v: string) => (v === "all" ? "All jobs" : (jobs.find((j) => j.id === v)?.title ?? v))}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All jobs</SelectItem>
@@ -190,7 +196,9 @@ export default function ApplicationsManager({
         </Select>
         <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v ?? "all"); setPage(1); }}>
           <SelectTrigger className="w-[160px]">
-            <SelectValue />
+            <SelectValue>
+              {(v: string) => (v === "all" ? "All statuses" : applicationStatusLabel(v as (typeof APPLICATION_STATUSES)[number]))}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>

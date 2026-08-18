@@ -67,7 +67,19 @@ export function ordinal(rank: number): string {
 // hands down to ApplicationsManager instead of a bare Application.
 export type ApplicationListRow = Application & { jobTitle: string };
 
-export class ApplicationValidationError extends Error {}
+// `field` matches the form field's `data-field`/`id`/`name` attribute in
+// JobApplicationForm.tsx, when the error is about one specific field --
+// lets the client scroll to and flag that exact field instead of just a
+// generic top-of-form banner (see lib/hooks/useServerFormError.ts). Left
+// undefined for errors that aren't about one field (e.g. a whole-application
+// duplicate), which falls back to the banner-only behavior.
+export class ApplicationValidationError extends Error {
+  field?: string;
+  constructor(message: string, field?: string) {
+    super(message);
+    this.field = field;
+  }
+}
 
 // Exported so tests/unit/business-rule-sync.test.ts can assert these stay in
 // sync with the hand-copied regexes in the submit_application RPC.
@@ -124,6 +136,14 @@ export type ApplicationSubmissionInput = {
   gpa?: number;
   documents: ApplicationDocumentInput[];
   teamPreferences: { teamName: string; rank: number }[];
+  // The raw team_choice_1/2/3 slots as submitted, blanks included --
+  // lets the checks below point a validation error at the exact
+  // team_choice_N field that's actually wrong (blank, duplicate, or
+  // invalid) instead of always blaming the first choice. Optional so
+  // fixtures that construct teamPreferences directly (bypassing form
+  // submission, e.g. unit tests) don't need to supply it; those fall back
+  // to the pre-existing "always team_choice_1" behavior.
+  teamSlots?: { field: string; teamName: string }[];
   screeningAnswers: { question: string; answer: string }[];
 };
 
@@ -154,51 +174,73 @@ export function buildApplicationInsertPayload(input: ApplicationSubmissionInput)
   const major = input.major.trim();
   const yearOfStudy = input.yearOfStudy.trim();
 
-  if (!firstName) throw new ApplicationValidationError("First name is required.");
-  if (!lastName) throw new ApplicationValidationError("Last name is required.");
-  if (!EMAIL_PATTERN.test(email)) throw new ApplicationValidationError("A valid email is required.");
-  if (!EMAIL_PATTERN.test(schoolEmail)) throw new ApplicationValidationError("A valid school email is required.");
-  if (!major) throw new ApplicationValidationError("Major is required.");
-  if (!yearOfStudy) throw new ApplicationValidationError("Year of study is required.");
+  if (!firstName) throw new ApplicationValidationError("First name is required.", "first_name");
+  if (!lastName) throw new ApplicationValidationError("Last name is required.", "last_name");
+  if (!EMAIL_PATTERN.test(email)) throw new ApplicationValidationError("A valid email is required.", "email");
+  if (!EMAIL_PATTERN.test(schoolEmail)) {
+    throw new ApplicationValidationError("A valid school email is required.", "school_email");
+  }
+  if (!major) throw new ApplicationValidationError("Major is required.", "major");
+  if (!yearOfStudy) throw new ApplicationValidationError("Year of study is required.", "year_of_study");
 
   // No free-typed "Other" school anymore -- school must be one of the fixed
   // SCHOOLS list, so it always has a known domain to validate against below.
   if (!SCHOOLS.includes(school)) {
-    throw new ApplicationValidationError("Please select a valid school.");
+    throw new ApplicationValidationError("Please select a valid school.", "school");
   }
 
   const allowedSchoolEmailDomains = SCHOOL_EMAIL_DOMAINS[school];
   const schoolEmailDomain = schoolEmail.split("@")[1] ?? "";
   if (!allowedSchoolEmailDomains.includes(schoolEmailDomain)) {
     throw new ApplicationValidationError(
-      `School email must be a ${school} address (e.g. name@${allowedSchoolEmailDomains[0]}).`
+      `School email must be a ${school} address (e.g. name@${allowedSchoolEmailDomains[0]}).`,
+      "school_email"
     );
   }
 
   const resume = input.documents.find((doc) => doc.documentType === "resume");
   const transcript = input.documents.find((doc) => doc.documentType === "transcript");
-  if (!resume?.storagePath) throw new ApplicationValidationError("A resume upload is required.");
-  if (!transcript?.storagePath) throw new ApplicationValidationError("An unofficial transcript upload is required.");
+  if (!resume?.storagePath) throw new ApplicationValidationError("A resume upload is required.", "resume");
+  if (!transcript?.storagePath) {
+    throw new ApplicationValidationError("An unofficial transcript upload is required.", "transcript");
+  }
 
   if (input.gpa !== undefined && (Number.isNaN(input.gpa) || input.gpa < 0 || input.gpa > 4)) {
-    throw new ApplicationValidationError("GPA must be a number between 0 and 4.");
+    throw new ApplicationValidationError("GPA must be a number between 0 and 4.", "gpa");
   }
 
   const phone = input.phone.trim();
-  if (!phone) throw new ApplicationValidationError("Phone number is required.");
+  if (!phone) throw new ApplicationValidationError("Phone number is required.", "phone");
   if (!PHONE_PATTERN.test(phone)) {
-    throw new ApplicationValidationError("Please enter a valid phone number.");
+    throw new ApplicationValidationError("Please enter a valid phone number.", "phone");
   }
 
+  const teamErrorField = (predicate: (teamName: string) => boolean): string =>
+    input.teamSlots?.find((slot) => predicate(slot.teamName))?.field ?? "team_choice_1";
+
   if (input.teamPreferences.length !== 3) {
-    throw new ApplicationValidationError("Please select 3 team preferences.");
+    throw new ApplicationValidationError(
+      "Please select 3 team preferences.",
+      teamErrorField((teamName) => !teamName)
+    );
   }
   const teamNames = input.teamPreferences.map((pref) => pref.teamName);
   if (new Set(teamNames).size !== teamNames.length) {
-    throw new ApplicationValidationError("Team preferences must be 3 distinct teams.");
+    const seen = new Set<string>();
+    throw new ApplicationValidationError(
+      "Team preferences must be 3 distinct teams.",
+      teamErrorField((teamName) => {
+        if (seen.has(teamName)) return true;
+        seen.add(teamName);
+        return false;
+      })
+    );
   }
   if (teamNames.some((teamName) => !TEAMS.includes(teamName as (typeof TEAMS)[number]))) {
-    throw new ApplicationValidationError("Invalid team selection.");
+    throw new ApplicationValidationError(
+      "Invalid team selection.",
+      teamErrorField((teamName) => Boolean(teamName) && !TEAMS.includes(teamName as (typeof TEAMS)[number]))
+    );
   }
 
   return {

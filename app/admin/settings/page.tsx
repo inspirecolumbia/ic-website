@@ -1,7 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import AdminTabs from "@/components/admin/AdminTabs";
 import AppSettingsForm from "@/components/admin/AppSettingsForm";
-import { getResendFromAddress } from "@/lib/settings";
+import { getResendFromAddress, getStaffAlertTemplateId } from "@/lib/settings";
+import { listStaffAlertTemplateOptions } from "@/app/admin/settings/actions";
 
 export default async function SettingsPage() {
   const { sessionClaims } = await auth();
@@ -17,13 +18,21 @@ export default async function SettingsPage() {
     );
   }
 
-  const fromAddress = await getResendFromAddress();
+  const [fromAddress, staffAlertTemplateId, templateOptions] = await Promise.all([
+    getResendFromAddress(),
+    getStaffAlertTemplateId(),
+    listStaffAlertTemplateOptions(),
+  ]);
 
   return (
     <div>
       <AdminTabs role={role} />
       <h1 className="mb-6 text-xl font-semibold [font-family:var(--font-serif)]">Settings</h1>
-      <AppSettingsForm initialFromAddress={fromAddress ?? ""} />
+      <AppSettingsForm
+        initialFromAddress={fromAddress ?? ""}
+        initialStaffAlertTemplateId={staffAlertTemplateId}
+        templates={"templates" in templateOptions ? templateOptions.templates : []}
+      />
     </div>
   );
 }

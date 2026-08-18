@@ -6,8 +6,12 @@ function htmlParagraphs(lines: string[]): string {
 
 // Built at resend.com/templates rather than inline HTML/text -- the alias
 // and variable names are whatever was defined there, not something this
-// code can introspect, so they're hand-pinned here to match.
-export const APPLICATION_CONFIRMATION_TEMPLATE_ALIAS = "application-confirmation";
+// code can introspect, so they're hand-pinned here to match. "Application
+// Received" (published, variables: first_name, last_name matching
+// applicationConfirmationTemplateVariables below) -- deliberately no
+// {{{RESEND_UNSUBSCRIBE_URL}}} tag in it, since that's a transactional
+// email and Resend only honors that tag for broadcasts/automations.
+export const APPLICATION_CONFIRMATION_TEMPLATE_ALIAS = "application-received-1";
 
 export function applicationConfirmationTemplateVariables(
   firstName: string,

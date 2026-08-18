@@ -8,8 +8,14 @@ const tabs = [
   { href: "/admin/jobs", label: "Jobs" },
   { href: "/admin/applications", label: "Applications", staffOnly: true },
   { href: "/admin/templates", label: "Templates" },
-  { href: "/admin/history", label: "History" },
   { href: "/admin/users", label: "Users", adminOnly: true },
+  // History's RLS policy already restricts every row to admin sessions
+  // (see supabase/migrations/20260803161329_create_audit_log.sql's "admin
+  // can read audit log" policy) -- a staff/member visiting the page just
+  // saw an empty table. Flagging it adminOnly here matches what was
+  // already true underneath, instead of showing a tab that leads nowhere
+  // useful for non-admins.
+  { href: "/admin/history", label: "History", adminOnly: true },
   { href: "/admin/settings", label: "Settings", adminOnly: true },
 ];
 
