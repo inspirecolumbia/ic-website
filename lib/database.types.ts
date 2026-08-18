@@ -87,6 +87,47 @@ export type Database = {
           },
         ]
       }
+      application_email_log: {
+        Row: {
+          application_id: string
+          created_at: string
+          id: string
+          recipient_email: string
+          sent_by_clerk_user_id: string
+          sent_by_role: string | null
+          template_id: string
+          template_name: string
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          id?: string
+          recipient_email: string
+          sent_by_clerk_user_id: string
+          sent_by_role?: string | null
+          template_id: string
+          template_name: string
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          id?: string
+          recipient_email?: string
+          sent_by_clerk_user_id?: string
+          sent_by_role?: string | null
+          template_id?: string
+          template_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_email_log_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       application_reviewer_notes: {
         Row: {
           application_id: string

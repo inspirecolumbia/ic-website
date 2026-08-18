@@ -34,6 +34,7 @@ type ApplicationDocument = Database["public"]["Tables"]["application_documents"]
 type TeamPreference = Database["public"]["Tables"]["application_team_preferences"]["Row"];
 type ScreeningAnswer = Database["public"]["Tables"]["application_screening_answers"]["Row"];
 type StatusHistoryEntry = Database["public"]["Tables"]["application_status_history"]["Row"];
+type EmailLogEntry = Database["public"]["Tables"]["application_email_log"]["Row"];
 
 const statusDotClass: Record<string, string> = {
   submitted: "bg-[var(--admin-text-muted)]",
@@ -114,6 +115,7 @@ export default function ApplicationDetail({
   reviewerNotes,
   currentUserId,
   currentUserRole,
+  emailLog,
 }: {
   application: Application;
   jobTitle: string;
@@ -125,6 +127,7 @@ export default function ApplicationDetail({
   reviewerNotes: ReviewerNoteEntry[];
   currentUserId: string | null;
   currentUserRole: "staff" | "admin";
+  emailLog: EmailLogEntry[];
 }) {
   const [status, setStatus] = useState(application.status);
   const [savedStatus, setSavedStatus] = useState(application.status);
@@ -398,6 +401,22 @@ export default function ApplicationDetail({
                     {formatDateTime(entry.created_at)}:{" "}
                     {entry.old_status ? `${applicationStatusLabel(entry.old_status)} → ` : ""}
                     {applicationStatusLabel(entry.new_status)}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <h3 className="mb-2 mt-4 text-sm font-medium text-[var(--admin-text)]">Emails sent</h3>
+            {emailLog.length === 0 ? (
+              <p className="text-sm text-[var(--admin-text-muted)]">No emails sent to this applicant yet.</p>
+            ) : (
+              // Same fixed-height/scroll/newest-first treatment as Status
+              // History above, for the same reason -- a long-lived
+              // application shouldn't keep growing this column.
+              <ul className="m-0 flex max-h-40 list-none flex-col gap-1 overflow-y-auto p-0 text-xs text-[var(--admin-text-muted)]">
+                {emailLog.map((entry) => (
+                  <li key={entry.id}>
+                    {formatDateTime(entry.created_at)}: &quot;{entry.template_name}&quot;
                   </li>
                 ))}
               </ul>

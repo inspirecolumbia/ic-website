@@ -316,7 +316,15 @@ export default function HistoryTable({ rows, isAdmin }: { rows: HistoryRow[]; is
         </div>
         <Select value={actionFilter} onValueChange={(v) => { setActionFilter(v ?? "all"); setPage(1); }}>
           <SelectTrigger className="w-[140px]">
-            <SelectValue />
+            {/* base-ui's SelectValue can't infer a plain-text label from a
+                matched SelectItem's children on its own -- without this
+                render-prop form, this showed the raw "insert"/"update"/
+                "delete" value instead of "Created"/"Updated"/"Deleted". */}
+            <SelectValue>
+              {(v: string) =>
+                ({ all: "All actions", insert: "Created", update: "Updated", delete: "Deleted" })[v] ?? v
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All actions</SelectItem>
@@ -327,7 +335,7 @@ export default function HistoryTable({ rows, isAdmin }: { rows: HistoryRow[]; is
         </Select>
         <Select value={actorFilter} onValueChange={(v) => { setActorFilter(v ?? "all"); setPage(1); }}>
           <SelectTrigger className="w-[160px]">
-            <SelectValue />
+            <SelectValue>{(v: string) => (v === "all" ? "All administrators" : v)}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All administrators</SelectItem>

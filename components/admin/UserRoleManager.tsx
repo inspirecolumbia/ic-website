@@ -119,7 +119,7 @@ function UserRow({
         )}
       </TableCell>
       <TableCell className="text-xs text-[var(--admin-text-muted)]">{formatDateTime(user.createdAt)}</TableCell>
-      <TableCell>
+      <TableCell className="text-right">
         {isAdmin ? (
           <span className="text-xs text-[var(--admin-text-muted)]">Managed in Clerk dashboard</span>
         ) : (
@@ -249,7 +249,17 @@ export default function UserRoleManager({
         />
         <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v ?? "all")}>
           <SelectTrigger className="w-[160px]">
-            <SelectValue />
+            {/* base-ui's SelectValue can't infer a plain-text label from a
+                matched SelectItem's children on its own -- without this
+                render-prop form, this showed the raw filter value (e.g.
+                "none") instead of its label ("No role assigned"). */}
+            <SelectValue>
+              {(v: string) =>
+                ({ all: "All roles", none: "No role assigned", member: "Member", staff: "Staff", admin: "Admin" })[
+                  v
+                ] ?? v
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All roles</SelectItem>
@@ -283,7 +293,7 @@ export default function UserRoleManager({
               <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Registered</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

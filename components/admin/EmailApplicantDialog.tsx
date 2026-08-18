@@ -150,7 +150,15 @@ export default function EmailApplicantDialog({
                 <Label htmlFor="applicant-email-template">Resend template</Label>
                 <Select value={templateId} onValueChange={(v) => v && selectTemplate(v)}>
                   <SelectTrigger id="applicant-email-template" className="w-full">
-                    <SelectValue placeholder="Select a template" />
+                    {/* base-ui's SelectValue can't infer a plain-text label
+                        from a matched SelectItem's children on its own -- it
+                        only auto-resolves via a data-driven `items` prop,
+                        which this codebase's declarative SelectItem usage
+                        never uses. Without this render-prop form, a picked
+                        template showed its raw id instead of its name. */}
+                    <SelectValue placeholder="Select a template">
+                      {(v: string) => templates?.find((t) => t.id === v)?.name ?? v}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {templates.map((t) => (

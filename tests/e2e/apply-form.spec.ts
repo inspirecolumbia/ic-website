@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { TEAM_6_PARENT_TITLE } from "@/lib/screening";
 import {
   fillApplicationForm,
+  schoolEmailFor,
   submit,
   teamPreferencesFor,
   uniqueEmail,
@@ -146,6 +147,31 @@ test.describe("other server-side validation", () => {
     await submit(page);
 
     await expect(page.getByText(/school email must be a/i)).toBeVisible();
+  });
+
+  test("team preferences survive a resubmit after fixing an unrelated error", async ({ page }) => {
+    // Reproduces a real reported bug: React's automatic post-action
+    // form.reset() (after any failed submission) force-clears the DOM
+    // value of every hidden input, including the team-preference ones,
+    // even though the React state driving them never changed and the UI
+    // still visually shows all 3 picked. Without JobApplicationForm's
+    // resetVersion-keyed remount fix, a resubmit after fixing an unrelated
+    // field would still fail with "Please select 3 team preferences" even
+    // though all 3 are genuinely selected on screen.
+    await fillApplicationForm(page, { schoolEmail: "ada@gmail.com" });
+    await submit(page);
+    await expect(page.getByText(/school email must be a/i)).toBeVisible();
+
+    // Files are legitimately, unavoidably cleared by the native reset
+    // (browsers never let JS restore a file input's selection) -- this is
+    // expected, not the bug under test, so they're reselected here same as
+    // a real applicant would have to.
+    await page.locator("#school_email").fill(schoolEmailFor("ada"));
+    await page.locator("#resume").setInputFiles(VALID_PDF);
+    await page.locator("#transcript").setInputFiles(VALID_PDF);
+    await submit(page);
+
+    await expect(page.getByRole("heading", { name: "Application submitted" })).toBeVisible();
   });
 
   test("rejects a second application from the same email for the same job", async ({ page }) => {

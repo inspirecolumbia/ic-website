@@ -3,12 +3,13 @@
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode, Ref } from "react";
 import Link from "next/link";
-import { Upload, X } from "lucide-react";
+import { Eye, Upload, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -87,16 +88,40 @@ function FileUploadField({
   name,
   label,
   errored,
+  resetVersion,
   onChangeClearError,
 }: {
   id: string;
   name: string;
   label: ReactNode;
   errored?: boolean;
+  // Bumped once per completed submission attempt (see JobApplicationForm).
+  // React's form actions run a real native form.reset() after every
+  // attempt, success or failure, which silently clears this field's actual
+  // <input type="file"> value (file inputs are always uncontrolled, can't
+  // be restored programmatically). Re-syncing from the real DOM value
+  // whenever this changes keeps the shown file honest -- previously this
+  // component kept *showing* the old filename after a reset even though
+  // the real input was empty, so a resubmit could fail with "a resume
+  // upload is required" despite the UI still displaying one.
+  resetVersion: number;
   onChangeClearError?: () => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Reading the real DOM file input is unavoidable here -- there's no
+    // pure derivation of "what the browser actually has selected right
+    // now" from props/state alone, and refs can't be read during render
+    // either (this repo's lint config enforces that too). This is exactly
+    // the rule's own documented exception: subscribing to an external
+    // system (the native input, silently cleared by React's post-action
+    // form.reset()) and syncing React state to match.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFile(inputRef.current?.files?.[0] ?? null);
+  }, [resetVersion]);
 
   // Local-only preview -- nothing has been uploaded yet at this point in the
   // flow (that happens server-side on final submit), so this reads the
@@ -113,8 +138,11 @@ function FileUploadField({
 
   function removeFile() {
     setFile(null);
+    setPreviewOpen(false);
     if (inputRef.current) inputRef.current.value = "";
   }
+
+  const labelText = typeof label === "string" ? label : "Document";
 
   return (
     <div data-field={id}>
@@ -123,30 +151,52 @@ function FileUploadField({
       </Label>
       <label
         htmlFor={id}
-        className={`mt-1.5 flex cursor-pointer items-center gap-3 rounded-md border border-dashed px-4 py-3.5 text-sm text-[var(--ink-muted)] transition-colors hover:border-[var(--brand)] hover:bg-[var(--surface-blue)] ${
-          errored ? "border-red-400 bg-red-50" : "border-[var(--line)] bg-[var(--card-public)]"
-        }`}
+        // A file is already selected -- clicking the dropzone again would
+        // silently swap it for a new one without the applicant explicitly
+        // choosing to. Require Remove first, matching how the admin
+        // dashboard's document handling treats a saved file as something
+        // you replace deliberately, not overwrite by accident.
+        onClick={(e) => {
+          if (file) e.preventDefault();
+        }}
+        className={`mt-1.5 flex items-center gap-3 rounded-md border border-dashed px-4 py-3.5 text-sm text-[var(--ink-muted)] transition-colors ${
+          file ? "cursor-default" : "cursor-pointer hover:border-[var(--brand)] hover:bg-[var(--surface-blue)]"
+        } ${errored ? "border-red-400 bg-red-50" : "border-[var(--line)] bg-[var(--card-public)]"}`}
       >
         <Upload className="size-5 shrink-0 text-[var(--brand)]" aria-hidden="true" />
         <span className="min-w-0 flex-1 truncate">
           {file ? <span className="font-medium text-[var(--ink)]">{file.name}</span> : "Choose a file"}
         </span>
         {file ? (
-          <button
-            type="button"
-            aria-label="Remove selected file"
-            // preventDefault stops the surrounding <label>'s default
-            // behavior (opening the file picker) from firing on top of
-            // this button's own click, since the button is nested inside
-            // the label that owns this field's htmlFor association.
-            onClick={(e) => {
-              e.preventDefault();
-              removeFile();
-            }}
-            className="shrink-0 rounded-md p-1 text-[var(--ink-muted)] outline-none transition-colors hover:bg-[var(--surface)] hover:text-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
-          >
-            <X className="size-4" />
-          </button>
+          <span className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              aria-label={`Preview ${labelText}`}
+              // preventDefault/stopPropagation keep the surrounding
+              // <label>'s default behavior (opening the file picker) from
+              // firing on top of this button's own click.
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setPreviewOpen(true);
+              }}
+              className="rounded-md p-1 text-[var(--ink-muted)] outline-none transition-colors hover:bg-[var(--surface)] hover:text-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+            >
+              <Eye className="size-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="Remove selected file"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                removeFile();
+              }}
+              className="rounded-md p-1 text-[var(--ink-muted)] outline-none transition-colors hover:bg-[var(--surface)] hover:text-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+            >
+              <X className="size-4" />
+            </button>
+          </span>
         ) : (
           <span className="shrink-0 text-xs text-[var(--ink-muted)]">PDF, max 5 MB</span>
         )}
@@ -160,16 +210,6 @@ function FileUploadField({
         required
         className="sr-only"
         onChange={(e) => {
-          // A resubmission after a fixable validation error clears the
-          // browser's actual file selection (files can't be restored
-          // programmatically for security reasons), which also fires this
-          // onChange with an empty file list -- only overwrite what's shown
-          // when a real file comes through, so the preview/filename doesn't
-          // flash back to empty and make it look like the previous choice
-          // was forgotten. This does mean the shown preview can briefly be
-          // ahead of the input's real (browser-cleared) value until the
-          // applicant reselects -- an accepted, pre-existing tradeoff, not
-          // something new here.
           const newFile = e.target.files?.[0];
           if (newFile) {
             setFile(newFile);
@@ -177,13 +217,21 @@ function FileUploadField({
           }
         }}
       />
-      {file && previewUrl && file.type === "application/pdf" && (
-        <iframe
-          src={previewUrl}
-          title={`${typeof label === "string" ? label : "Document"} preview`}
-          className="mt-2 h-64 w-full rounded-md border border-[var(--line)]"
-        />
-      )}
+
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>{labelText}</DialogTitle>
+          </DialogHeader>
+          {previewUrl && (
+            <iframe
+              src={previewUrl}
+              title={`${labelText} preview`}
+              className="h-[75vh] w-full rounded-md border border-[var(--line)]"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -203,12 +251,14 @@ function RadioWithOther({
   options,
   otherPlaceholder,
   allowOther = true,
+  resetVersion,
   onChangeClearError,
 }: {
   name: string;
   options: string[];
   otherPlaceholder: string;
   allowOther?: boolean;
+  resetVersion: number;
   onChangeClearError?: () => void;
 }) {
   const [choice, setChoice] = useState("");
@@ -254,7 +304,17 @@ function RadioWithOther({
         // browser can't surface a validation error for it. Emptiness (no
         // option picked yet) is caught server-side the same as every other
         // field, by buildApplicationInsertPayload / the submit_application RPC.
-        <input type="hidden" name={name} value={choice} />
+        //
+        // Keyed on resetVersion to force a full remount after every
+        // submission attempt -- React's automatic post-action form.reset()
+        // clears this input's real DOM value, but since `choice` itself
+        // (the state driving `value` here) doesn't change from that reset,
+        // React's reconciler sees no prop diff and skips rewriting the DOM,
+        // leaving it genuinely empty even though the UI still shows a
+        // selection. A resubmit then reads that real empty value and fails
+        // validation for a field that looks filled in. Remounting forces a
+        // fresh node with the correct current value every time.
+        <input type="hidden" key={`${name}-${resetVersion}`} name={name} value={choice} />
       )}
     </div>
   );
@@ -274,6 +334,32 @@ export default function JobApplicationForm({
     state,
     (s) => (s && "error" in s ? { message: s.error, field: s.field } : null)
   );
+
+  // Bumped once per completed submission attempt -- passed down to key/
+  // remount every controlled hidden input (team choices, school, year of
+  // study, eligibility) and to re-sync FileUploadField's file state. React
+  // runs a real native form.reset() after every form action (success or
+  // failure), which force-clears those inputs' actual DOM values. Because
+  // the React state driving each one (e.g. `choice1`) doesn't itself
+  // change from that reset, React's reconciler sees no prop diff on the
+  // next render and skips rewriting the DOM node, leaving it genuinely
+  // empty while the UI still shows a selection -- a resubmit then reads
+  // that real empty value and fails validation for a field that looks
+  // filled in. Keying elements off this version number forces a fresh
+  // remount with the correct value every time, closing that gap.
+  //
+  // "Adjusting state when a prop changes" (React's own documented pattern,
+  // see https://react.dev/learn/you-might-not-need-an-effect) -- calling
+  // setState directly during render, guarded by comparing against the
+  // previous value, avoids both an unnecessary extra render (vs. an effect)
+  // and the ref-during-render read/write this repo's stricter lint config
+  // rejects (vs. a ref-based counter).
+  const [prevState, setPrevState] = useState(state);
+  const [resetVersion, setResetVersion] = useState(0);
+  if (state !== prevState) {
+    setPrevState(state);
+    setResetVersion((v) => v + 1);
+  }
 
   // Every field below is fully React-controlled (value + onChange/
   // onValueChange, never a bare `name` handed to a native or headless-UI
@@ -506,6 +592,7 @@ export default function JobApplicationForm({
                       options={SCHOOLS}
                       otherPlaceholder="Enter your school"
                       allowOther={false}
+                      resetVersion={resetVersion}
                       onChangeClearError={() => clearFieldError("school")}
                     />
                   </div>
@@ -520,6 +607,7 @@ export default function JobApplicationForm({
                       name="year_of_study"
                       options={YEAR_OF_STUDY_OPTIONS}
                       otherPlaceholder="Enter your year of study"
+                      resetVersion={resetVersion}
                       onChangeClearError={() => clearFieldError("year_of_study")}
                     />
                   </div>
@@ -578,6 +666,7 @@ export default function JobApplicationForm({
                     </>
                   }
                   errored={erroredField === "resume"}
+                  resetVersion={resetVersion}
                   onChangeClearError={() => clearFieldError("resume")}
                 />
                 <FileUploadField
@@ -590,6 +679,7 @@ export default function JobApplicationForm({
                     </>
                   }
                   errored={erroredField === "transcript"}
+                  resetVersion={resetVersion}
                   onChangeClearError={() => clearFieldError("transcript")}
                 />
               </div>
@@ -682,8 +772,10 @@ export default function JobApplicationForm({
                             ("Logistics and Operations / AV Production") isn't even a
                             storable preference. This hidden input is the one thing that
                             actually gets submitted under team_choice_N, resolved to the
-                            sub-track when team 6 is picked. */}
-                        <input type="hidden" name={name} value={resolvedValue} />
+                            sub-track when team 6 is picked. Keyed on
+                            resetVersion for the same reason RadioWithOther's
+                            hidden input is -- see that component's comment. */}
+                        <input type="hidden" key={`${name}-${resetVersion}`} name={name} value={resolvedValue} />
                         {isTeam6 && (
                           <div className="mt-2">
                             <Label className="mb-1.5">
@@ -747,8 +839,9 @@ export default function JobApplicationForm({
                     </RadioGroup>
                     {/* Same reasoning as the team Select above: no `name` on the
                         RadioGroup itself, a separate controlled hidden input carries
-                        the submitted value so a failed submission can't wipe it. */}
-                    <input type="hidden" name={key} value={value} />
+                        the submitted value so a failed submission can't wipe it.
+                        Keyed on resetVersion for the same reason too. */}
+                    <input type="hidden" key={`${key}-${resetVersion}`} name={key} value={value} />
                   </div>
                 );
               })}

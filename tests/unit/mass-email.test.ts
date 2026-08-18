@@ -34,18 +34,18 @@ describe("parseAdditionalEmails", () => {
 describe("buildMassEmailRecipients", () => {
   it("dedupes applicants and additional emails, preferring the applicant's known name", () => {
     const recipients = buildMassEmailRecipients(
-      [{ email: "ada@example.com", firstName: "Ada", lastName: "Lovelace" }],
+      [{ applicationId: "app-1", email: "ada@example.com", firstName: "Ada", lastName: "Lovelace" }],
       ["ada@example.com", "grace@example.com"]
     );
     expect(recipients).toEqual([
-      { to: "ada@example.com", firstName: "Ada", lastName: "Lovelace" },
-      { to: "grace@example.com", firstName: null, lastName: null },
+      { to: "ada@example.com", applicationId: "app-1", firstName: "Ada", lastName: "Lovelace" },
+      { to: "grace@example.com", applicationId: null, firstName: null, lastName: null },
     ]);
   });
 
   it("dedupes case-insensitively", () => {
     const recipients = buildMassEmailRecipients(
-      [{ email: "Ada@Example.com", firstName: "Ada", lastName: "Lovelace" }],
+      [{ applicationId: "app-1", email: "Ada@Example.com", firstName: "Ada", lastName: "Lovelace" }],
       ["ada@example.com"]
     );
     expect(recipients).toHaveLength(1);
@@ -62,7 +62,7 @@ describe("resolveRecipientVariables", () => {
 
   it("uses the applicant's known name for first_name/last_name, overriding any global value", () => {
     const resolved = resolveRecipientVariables(
-      { to: "ada@example.com", firstName: "Ada", lastName: "Lovelace" },
+      { to: "ada@example.com", applicationId: "app-1", firstName: "Ada", lastName: "Lovelace" },
       variables,
       { first_name: "Applicant", role: "Associate" }
     );
@@ -71,7 +71,7 @@ describe("resolveRecipientVariables", () => {
 
   it("falls back to the global value for a manually-added email with no known name", () => {
     const resolved = resolveRecipientVariables(
-      { to: "grace@example.com", firstName: null, lastName: null },
+      { to: "grace@example.com", applicationId: null, firstName: null, lastName: null },
       variables,
       { first_name: "Applicant", role: "Associate" }
     );
@@ -80,7 +80,7 @@ describe("resolveRecipientVariables", () => {
 
   it("omits a key with neither an auto value nor a global value, leaving Resend's fallback to apply", () => {
     const resolved = resolveRecipientVariables(
-      { to: "grace@example.com", firstName: null, lastName: null },
+      { to: "grace@example.com", applicationId: null, firstName: null, lastName: null },
       variables,
       {}
     );
@@ -90,8 +90,8 @@ describe("resolveRecipientVariables", () => {
 
 describe("checkVariableCoverage", () => {
   const recipients = [
-    { to: "ada@example.com", firstName: "Ada", lastName: "Lovelace" },
-    { to: "grace@example.com", firstName: null, lastName: null },
+    { to: "ada@example.com", applicationId: "app-1", firstName: "Ada", lastName: "Lovelace" },
+    { to: "grace@example.com", applicationId: null, firstName: null, lastName: null },
   ];
 
   it("counts auto-fills for first_name/last_name and reports the rest as missing when unset", () => {

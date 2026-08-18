@@ -232,7 +232,10 @@ export default function MassEmailComposer({
               }}
             >
               <SelectTrigger id="mass-email-status" className="w-full">
-                <SelectValue />
+                {/* See the template SelectValue below for why this render-prop
+                    form is needed -- base-ui doesn't infer a label from a
+                    SelectItem's children on its own. */}
+                <SelectValue>{(v: typeof status) => applicationStatusLabel(v)}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {APPLICATION_STATUSES.map((s) => (
@@ -254,7 +257,9 @@ export default function MassEmailComposer({
               }}
             >
               <SelectTrigger id="mass-email-job" className="w-full">
-                <SelectValue />
+                <SelectValue>
+                  {(v: string) => (v === "all" ? "All jobs" : (jobs.find((j) => j.id === v)?.title ?? v))}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All jobs</SelectItem>
@@ -366,7 +371,13 @@ export default function MassEmailComposer({
           </div>
           <Select value={templateId} onValueChange={(v) => v && selectTemplate(v)} disabled={templates.length === 0}>
             <SelectTrigger id="mass-email-template" className="w-full">
-              <SelectValue placeholder="Select a template" />
+              {/* base-ui's SelectValue can't infer a plain-text label from a
+                  matched SelectItem's children on its own -- without this
+                  render-prop form, a picked template showed its raw id
+                  instead of its name. */}
+              <SelectValue placeholder="Select a template">
+                {(v: string) => templates.find((t) => t.id === v)?.name ?? v}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {templates.map((t) => (
@@ -456,7 +467,9 @@ export default function MassEmailComposer({
         <div className="flex flex-col gap-1.5">
           <Select value={scheduleMode} onValueChange={(v) => v && setScheduleMode(v as typeof scheduleMode)}>
             <SelectTrigger className="w-full sm:w-[220px]">
-              <SelectValue />
+              <SelectValue>
+                {(v: typeof scheduleMode) => (v === "now" ? "Send immediately" : "Schedule for later")}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="now">Send immediately</SelectItem>

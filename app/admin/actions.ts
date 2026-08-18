@@ -452,9 +452,9 @@ export async function sendApplicantEmail(
   templateId: string,
   variables: Record<string, string>
 ): Promise<{ error: string } | null> {
-  const { sessionClaims } = await auth();
+  const { userId, sessionClaims } = await auth();
   const role = sessionClaims?.user_role as string | undefined;
-  if (role !== "staff" && role !== "admin") return { error: "Not authorized." };
+  if (!userId || (role !== "staff" && role !== "admin")) return { error: "Not authorized." };
 
   const supabase = createClerkSupabaseClient();
   const { data: application, error: fetchError } = await supabase
@@ -473,6 +473,7 @@ export async function sendApplicantEmail(
 
   const recipient: MassEmailRecipient = {
     to: application.email,
+    applicationId,
     firstName: application.first_name,
     lastName: application.last_name,
   };
@@ -487,6 +488,20 @@ export async function sendApplicantEmail(
     return { error: err instanceof Error ? err.message : "Failed to send." };
   }
 
+  // Best-effort: the email already genuinely went out at this point, a
+  // logging failure shouldn't turn a successful send into a user-facing
+  // error, same reasoning as this codebase's other best-effort writes.
+  const { error: logError } = await supabase.from("application_email_log").insert({
+    application_id: applicationId,
+    sent_by_clerk_user_id: userId,
+    sent_by_role: role,
+    template_id: templateId,
+    template_name: template.name,
+    recipient_email: recipient.to,
+  });
+  if (logError) console.error("Failed to log applicant email:", logError.message);
+
+  revalidatePath(`/admin/applications/${applicationId}`);
   return null;
 }
 
