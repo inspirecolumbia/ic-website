@@ -136,6 +136,14 @@ export type ApplicationSubmissionInput = {
   gpa?: number;
   documents: ApplicationDocumentInput[];
   teamPreferences: { teamName: string; rank: number }[];
+  // The raw team_choice_1/2/3 slots as submitted, blanks included --
+  // lets the checks below point a validation error at the exact
+  // team_choice_N field that's actually wrong (blank, duplicate, or
+  // invalid) instead of always blaming the first choice. Optional so
+  // fixtures that construct teamPreferences directly (bypassing form
+  // submission, e.g. unit tests) don't need to supply it; those fall back
+  // to the pre-existing "always team_choice_1" behavior.
+  teamSlots?: { field: string; teamName: string }[];
   screeningAnswers: { question: string; answer: string }[];
 };
 
@@ -207,15 +215,32 @@ export function buildApplicationInsertPayload(input: ApplicationSubmissionInput)
     throw new ApplicationValidationError("Please enter a valid phone number.", "phone");
   }
 
+  const teamErrorField = (predicate: (teamName: string) => boolean): string =>
+    input.teamSlots?.find((slot) => predicate(slot.teamName))?.field ?? "team_choice_1";
+
   if (input.teamPreferences.length !== 3) {
-    throw new ApplicationValidationError("Please select 3 team preferences.", "team_choice_1");
+    throw new ApplicationValidationError(
+      "Please select 3 team preferences.",
+      teamErrorField((teamName) => !teamName)
+    );
   }
   const teamNames = input.teamPreferences.map((pref) => pref.teamName);
   if (new Set(teamNames).size !== teamNames.length) {
-    throw new ApplicationValidationError("Team preferences must be 3 distinct teams.", "team_choice_1");
+    const seen = new Set<string>();
+    throw new ApplicationValidationError(
+      "Team preferences must be 3 distinct teams.",
+      teamErrorField((teamName) => {
+        if (seen.has(teamName)) return true;
+        seen.add(teamName);
+        return false;
+      })
+    );
   }
   if (teamNames.some((teamName) => !TEAMS.includes(teamName as (typeof TEAMS)[number]))) {
-    throw new ApplicationValidationError("Invalid team selection.", "team_choice_1");
+    throw new ApplicationValidationError(
+      "Invalid team selection.",
+      teamErrorField((teamName) => Boolean(teamName) && !TEAMS.includes(teamName as (typeof TEAMS)[number]))
+    );
   }
 
   return {

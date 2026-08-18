@@ -123,48 +123,55 @@ function UserRow({
         {isAdmin ? (
           <span className="text-xs text-[var(--admin-text-muted)]">Managed in Clerk dashboard</span>
         ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <button
-                  type="button"
-                  aria-label={`More actions for ${user.name}`}
-                  disabled={pending}
-                  className="flex size-8 items-center justify-center rounded-md text-[var(--admin-text-muted)] outline-none hover:bg-[var(--admin-surface-hover)] hover:text-[var(--admin-text)] focus-visible:ring-2 focus-visible:ring-[var(--admin-brand)] disabled:pointer-events-none disabled:opacity-40"
-                >
-                  <MoreVertical className="size-4" />
-                </button>
-              }
-            />
-            <DropdownMenuContent align="end">
-              {user.banned ? (
-                <DropdownMenuItem onClick={() => runAction(() => restoreUserAccess(user.id), "Access restored.")}>
-                  Restore access
-                </DropdownMenuItem>
-              ) : (
-                <>
-                  {user.role !== "member" && (
-                    <DropdownMenuItem
-                      onClick={() => runAction(() => promoteUser(user.id, "member"), "Set as Member.")}
-                    >
-                      Set as Member
-                    </DropdownMenuItem>
-                  )}
-                  {user.role !== "staff" && (
-                    <DropdownMenuItem
-                      onClick={() => runAction(() => promoteUser(user.id, "staff"), "Set as Staff.")}
-                    >
-                      Set as Staff
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onClick={() => setConfirmRevoke(true)}>
-                    Revoke access
+          // text-right on the cell alone doesn't reach this -- DropdownMenu's
+          // root renders a block-level wrapper that doesn't inherit text
+          // alignment, same as JobsTable's Actions column already accounts
+          // for. An explicit flex/justify-end wrapper is what actually
+          // right-aligns the trigger button.
+          <div className="flex justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <button
+                    type="button"
+                    aria-label={`More actions for ${user.name}`}
+                    disabled={pending}
+                    className="flex size-8 items-center justify-center rounded-md text-[var(--admin-text-muted)] outline-none hover:bg-[var(--admin-surface-hover)] hover:text-[var(--admin-text)] focus-visible:ring-2 focus-visible:ring-[var(--admin-brand)] disabled:pointer-events-none disabled:opacity-40"
+                  >
+                    <MoreVertical className="size-4" />
+                  </button>
+                }
+              />
+              <DropdownMenuContent align="end">
+                {user.banned ? (
+                  <DropdownMenuItem onClick={() => runAction(() => restoreUserAccess(user.id), "Access restored.")}>
+                    Restore access
                   </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                ) : (
+                  <>
+                    {user.role !== "member" && (
+                      <DropdownMenuItem
+                        onClick={() => runAction(() => promoteUser(user.id, "member"), "Set as Member.")}
+                      >
+                        Set as Member
+                      </DropdownMenuItem>
+                    )}
+                    {user.role !== "staff" && (
+                      <DropdownMenuItem
+                        onClick={() => runAction(() => promoteUser(user.id, "staff"), "Set as Staff.")}
+                      >
+                        Set as Staff
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onClick={() => setConfirmRevoke(true)}>
+                      Revoke access
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         )}
         {error && (
           <p role="alert" className="mt-1 text-xs text-[var(--admin-danger)]">

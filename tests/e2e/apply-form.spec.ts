@@ -111,6 +111,15 @@ test.describe("team preference validation", () => {
     await submit(page);
 
     await expect(page.getByText("Please select 3 team preferences.")).toBeVisible();
+    // Reproduces a real reported bug: this error's field used to be
+    // hardcoded to "team_choice_1" regardless of which slot was actually
+    // the problem, so fixing an unrelated 1st choice highlighted instead
+    // of the real culprit (here, the missing sub-track under the 3rd
+    // choice). The field is now derived from which team_choice_N slot
+    // was actually submitted blank, so the 3rd choice -- which contains
+    // the "Choose a sub-track" section -- is the one that gets flagged.
+    await expect(page.locator('[data-field="team_choice_3"]')).toHaveClass(/ring-red-400/);
+    await expect(page.locator('[data-field="team_choice_1"]')).not.toHaveClass(/ring-red-400/);
   });
 
   test("excludes an already-picked team from the other two dropdowns", async ({ page }) => {
@@ -149,7 +158,7 @@ test.describe("other server-side validation", () => {
     await expect(page.getByText(/school email must be a/i)).toBeVisible();
   });
 
-  test("team preferences survive a resubmit after fixing an unrelated error", async ({ page }) => {
+  test("team preferences and files survive a resubmit after fixing an unrelated error", async ({ page }) => {
     // Reproduces a real reported bug: React's automatic post-action
     // form.reset() (after any failed submission) force-clears the DOM
     // value of every hidden input, including the team-preference ones,
@@ -158,17 +167,21 @@ test.describe("other server-side validation", () => {
     // resetVersion-keyed remount fix, a resubmit after fixing an unrelated
     // field would still fail with "Please select 3 team preferences" even
     // though all 3 are genuinely selected on screen.
+    //
+    // File inputs are always uncontrolled and get cleared by that same
+    // native reset -- a first fix (re-syncing FileUploadField's displayed
+    // file from the real, now-empty DOM) stopped it from lying about
+    // having a file, but still genuinely lost the attachment on every
+    // error, forcing a reattach after ANY validation failure, not just a
+    // real file problem. The real fix reattaches the retained File object
+    // to the input via DataTransfer after each reset, so this resubmit
+    // deliberately does NOT reselect files -- if that regresses, this
+    // fails with "a resume upload is required" instead of succeeding.
     await fillApplicationForm(page, { schoolEmail: "ada@gmail.com" });
     await submit(page);
     await expect(page.getByText(/school email must be a/i)).toBeVisible();
 
-    // Files are legitimately, unavoidably cleared by the native reset
-    // (browsers never let JS restore a file input's selection) -- this is
-    // expected, not the bug under test, so they're reselected here same as
-    // a real applicant would have to.
     await page.locator("#school_email").fill(schoolEmailFor("ada"));
-    await page.locator("#resume").setInputFiles(VALID_PDF);
-    await page.locator("#transcript").setInputFiles(VALID_PDF);
     await submit(page);
 
     await expect(page.getByRole("heading", { name: "Application submitted" })).toBeVisible();

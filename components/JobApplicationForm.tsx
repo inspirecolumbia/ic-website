@@ -112,16 +112,21 @@ function FileUploadField({
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Reading the real DOM file input is unavoidable here -- there's no
-    // pure derivation of "what the browser actually has selected right
-    // now" from props/state alone, and refs can't be read during render
-    // either (this repo's lint config enforces that too). This is exactly
-    // the rule's own documented exception: subscribing to an external
-    // system (the native input, silently cleared by React's post-action
-    // form.reset()) and syncing React state to match.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setFile(inputRef.current?.files?.[0] ?? null);
-  }, [resetVersion]);
+    // The native file input is always uncontrolled, and React runs a real
+    // form.reset() after every action (success or failure), which silently
+    // empties its actual FileList even though `file` state -- and the UI --
+    // still show a selection. Rather than following the DOM's now-wrong
+    // value (which is what used to happen here, and forced a full
+    // reattach after any error, not just the one that was actually wrong),
+    // reattach the file we're still holding onto the real input via
+    // DataTransfer so a resubmit's FormData genuinely carries it again,
+    // matching what's displayed.
+    const input = inputRef.current;
+    if (!input || !file) return;
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    input.files = dataTransfer.files;
+  }, [resetVersion, file]);
 
   // Local-only preview -- nothing has been uploaded yet at this point in the
   // flow (that happens server-side on final submit), so this reads the
@@ -491,6 +496,7 @@ export default function JobApplicationForm({
                   <Input
                     id="first_name"
                     name="first_name"
+                    autoComplete="given-name"
                     required
                     value={firstName}
                     onChange={(e) => {
@@ -508,6 +514,7 @@ export default function JobApplicationForm({
                   <Input
                     id="last_name"
                     name="last_name"
+                    autoComplete="family-name"
                     required
                     value={lastName}
                     onChange={(e) => {
@@ -529,6 +536,7 @@ export default function JobApplicationForm({
                     id="email"
                     name="email"
                     type="email"
+                    autoComplete="email"
                     required
                     value={email}
                     onChange={(e) => {
@@ -547,6 +555,11 @@ export default function JobApplicationForm({
                     id="school_email"
                     name="school_email"
                     type="email"
+                    // Deliberately not autoComplete="email" -- this is a
+                    // second, distinct address from Personal email above,
+                    // and sharing the same autocomplete category would
+                    // invite the browser to fill the same value into both.
+                    autoComplete="off"
                     required
                     value={schoolEmail}
                     onChange={(e) => {
@@ -567,6 +580,7 @@ export default function JobApplicationForm({
                   id="phone"
                   name="phone"
                   type="tel"
+                  autoComplete="tel"
                   required
                   placeholder="(803) 555-0100"
                   value={phone}
@@ -817,7 +831,13 @@ export default function JobApplicationForm({
                 const value = eligibilityAnswers[key];
                 return (
                   <div key={key}>
-                    <Label htmlFor={key} className="mb-1.5">
+                    {/* No htmlFor -- this question labels the whole
+                        Yes/No group below, not one single control, so
+                        there's no one element id it could correctly point
+                        at (each RadioGroupItem has its own label already).
+                        Matches the School/Year of study Labels above,
+                        which don't use htmlFor for the same reason. */}
+                    <Label className="mb-1.5">
                       {config.question}
                       <Required />
                     </Label>

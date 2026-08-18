@@ -9,6 +9,7 @@ import {
 import { ApplicationUploadError, uploadApplicationDocument } from "@/lib/storage";
 import { SCREENING_QUESTIONS } from "@/lib/screening";
 import { sendEmail, sendTemplateEmail } from "@/lib/email/send";
+import { getStaffAlertTemplateId } from "@/lib/settings";
 import {
   APPLICATION_CONFIRMATION_TEMPLATE_ALIAS,
   applicationConfirmationTemplateVariables,
@@ -19,10 +20,16 @@ import type { Database } from "@/lib/database.types";
 export type ApplicationFormState = { error: string; field?: string } | { ok: true } | null;
 
 function splitTeamPreferences(formData: FormData) {
-  return ["team_choice_1", "team_choice_2", "team_choice_3"]
-    .map((name) => formData.get(name) as string | null)
-    .filter((value): value is string => Boolean(value))
-    .map((teamName, i) => ({ teamName, rank: i + 1 }));
+  const slots = ["team_choice_1", "team_choice_2", "team_choice_3"].map((field) => ({
+    field,
+    teamName: ((formData.get(field) as string | null) ?? "").trim(),
+  }));
+  return {
+    teamPreferences: slots
+      .filter((slot) => slot.teamName)
+      .map((slot, i) => ({ teamName: slot.teamName, rank: i + 1 })),
+    teamSlots: slots,
+  };
 }
 
 function buildScreeningAnswers(formData: FormData) {
@@ -80,6 +87,7 @@ export async function submitApplication(
     }
 
     const gpaRaw = formData.get("gpa") as string | null;
+    const { teamPreferences, teamSlots } = splitTeamPreferences(formData);
 
     const payload = buildApplicationInsertPayload({
       applicationId,
@@ -101,7 +109,8 @@ export async function submitApplication(
           storagePath: transcriptUpload.storagePath,
         },
       ],
-      teamPreferences: splitTeamPreferences(formData),
+      teamPreferences,
+      teamSlots,
       screeningAnswers: buildScreeningAnswers(formData),
     });
 
@@ -135,6 +144,28 @@ export async function submitApplication(
     const lastName = formData.get("last_name") as string;
     const applicantEmail = formData.get("email") as string;
     const staffAlertEmailAddress = process.env.STAFF_ALERT_EMAIL;
+    const staffAlertTemplateId = await getStaffAlertTemplateId();
+
+    function sendStaffAlert(to: string) {
+      // A template set in Admin > Settings takes over from the hardcoded
+      // plain-text message -- variable names are whatever that template
+      // defines, so this supplies the same fields by both a generic and an
+      // applicant-specific name and lets Resend's per-variable
+      // fallback_value cover anything it doesn't recognize.
+      if (staffAlertTemplateId) {
+        return sendTemplateEmail({
+          to,
+          templateId: staffAlertTemplateId,
+          variables: {
+            applicant_name: `${firstName} ${lastName}`,
+            first_name: firstName,
+            last_name: lastName,
+            job_title: jobTitle,
+          },
+        });
+      }
+      return sendEmail({ to, ...staffAlertEmail(`${firstName} ${lastName}`, jobTitle) });
+    }
 
     // Best-effort: a Resend outage or misconfiguration must never turn a
     // successful application submission into a user-facing error.
@@ -144,12 +175,7 @@ export async function submitApplication(
         templateId: APPLICATION_CONFIRMATION_TEMPLATE_ALIAS,
         variables: applicationConfirmationTemplateVariables(firstName, lastName),
       }),
-      staffAlertEmailAddress
-        ? sendEmail({
-            to: staffAlertEmailAddress,
-            ...staffAlertEmail(`${firstName} ${lastName}`, jobTitle),
-          })
-        : Promise.resolve(),
+      staffAlertEmailAddress ? sendStaffAlert(staffAlertEmailAddress) : Promise.resolve(),
     ]);
 
     return { ok: true };

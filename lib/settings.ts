@@ -13,6 +13,17 @@ export async function getResendFromAddress(): Promise<string | null> {
   return data?.resend_from_address || process.env.RESEND_FROM_ADDRESS || null;
 }
 
+// Null (the default) means "send the new-application staff alert through
+// the hardcoded plain-text message" (see staffAlertEmail in
+// lib/email/templates.ts) -- set from Admin > Settings to route it through
+// a real Resend template instead. Read access is public for the same
+// reason getResendFromAddress's is: nothing here is confidential.
+export async function getStaffAlertTemplateId(): Promise<string | null> {
+  const supabase = createClient();
+  const { data } = await supabase.from("app_settings").select("staff_alert_template_id").eq("id", 1).maybeSingle();
+  return data?.staff_alert_template_id ?? null;
+}
+
 // Resend's `from` accepts either a bare email or a "Name <email>" form --
 // this validates either shape by pulling out just the address part.
 export function isValidFromAddress(value: string): boolean {
