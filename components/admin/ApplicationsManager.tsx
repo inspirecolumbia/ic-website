@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronUp, ChevronDown, ArrowUpDown, FileSpreadsheet, Mail, X } from "lucide-react";
+import { ChevronUp, ChevronDown, ArrowUpDown, FileSpreadsheet, Mail, Trash2, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +21,18 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { deleteApplication } from "@/app/admin/actions";
 import { APPLICATION_STATUSES, applicationStatusLabel, type ApplicationListRow } from "@/lib/applications";
 import { formatDateTime } from "@/lib/history";
 
@@ -81,13 +93,21 @@ export default function ApplicationsManager({
   rows,
   jobs,
   fetchCap,
+  currentUserRole,
+  applicationDeleteEnabled,
 }: {
   rows: ApplicationListRow[];
   jobs: { id: string; title: string }[];
   fetchCap: number;
+  currentUserRole: "staff" | "admin";
+  applicationDeleteEnabled: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const canDelete = currentUserRole === "admin" && applicationDeleteEnabled;
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletePending, startDeleteTransition] = useTransition();
   const [search, setSearch] = useState("");
   // Seeded from ?job=<id> so a click-through from the Jobs tab (see
   // JobsManager.tsx) lands here pre-filtered to that job -- an invalid or
@@ -243,6 +263,7 @@ export default function ApplicationsManager({
               <SortableHead column="name" label="Applicant" sort={sort} onSort={handleSort} />
               <SortableHead column="jobTitle" label="Job" sort={sort} onSort={handleSort} />
               <SortableHead column="status" label="Status" sort={sort} onSort={handleSort} />
+              {canDelete && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -275,6 +296,70 @@ export default function ApplicationsManager({
                     {applicationStatusLabel(row.status)}
                   </span>
                 </TableCell>
+                {canDelete && (
+                  <TableCell
+                    className="text-right"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
+                    <AlertDialog
+                      open={confirmDeleteId === row.id}
+                      onOpenChange={(open) => {
+                        if (!open) setConfirmDeleteId(null);
+                      }}
+                    >
+                      <AlertDialogTrigger
+                        render={
+                          <button
+                            type="button"
+                            aria-label={`Delete ${applicantName(row)}'s application`}
+                            disabled={deletePending}
+                            onClick={() => {
+                              setDeleteError(null);
+                              setConfirmDeleteId(row.id);
+                            }}
+                            className="flex size-8 items-center justify-center rounded-md text-[var(--admin-text-muted)] outline-none hover:bg-[var(--admin-danger-soft)] hover:text-[var(--admin-danger)] focus-visible:bg-[var(--admin-danger-soft)] focus-visible:text-[var(--admin-danger)] focus-visible:ring-2 focus-visible:ring-[var(--admin-danger)] disabled:pointer-events-none disabled:opacity-40"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        }
+                      />
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete {applicantName(row)}&apos;s application?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This permanently deletes the application and all of its documents,
+                            screening answers, and notes. This can&apos;t be undone.
+                            {deleteError && (
+                              <span role="alert" className="mt-2 block text-[var(--admin-danger)]">
+                                {deleteError}
+                              </span>
+                            )}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel disabled={deletePending}>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            variant="destructive"
+                            disabled={deletePending}
+                            onClick={() => {
+                              startDeleteTransition(async () => {
+                                const result = await deleteApplication(row.id);
+                                if (result?.error) {
+                                  setDeleteError(result.error);
+                                } else {
+                                  setConfirmDeleteId(null);
+                                }
+                              });
+                            }}
+                          >
+                            {deletePending ? "Deleting..." : "Delete"}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>

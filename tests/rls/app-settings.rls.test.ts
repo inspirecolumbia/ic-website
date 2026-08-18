@@ -59,6 +59,50 @@ describe("app_settings RLS", () => {
     });
   });
 
+  it("the three feature-toggle columns default to true on the seeded row", async () => {
+    await withTransaction(async (client) => {
+      await impersonate(client, asAnon());
+      const { rows } = await client.query(
+        "select application_delete_enabled, user_delete_enabled, history_delete_enabled from public.app_settings where id = 1"
+      );
+      expect(rows[0]).toEqual({
+        application_delete_enabled: true,
+        user_delete_enabled: true,
+        history_delete_enabled: true,
+      });
+    });
+  });
+
+  it("member can read the feature-toggle columns but not update them", async () => {
+    await withTransaction(async (client) => {
+      await impersonate(client, asMember());
+      const { rows } = await client.query("select application_delete_enabled from public.app_settings where id = 1");
+      expect(rows).toHaveLength(1);
+
+      const { rowCount } = await client.query(
+        "update public.app_settings set application_delete_enabled = false where id = 1"
+      );
+      expect(rowCount).toBe(0);
+    });
+  });
+
+  it("admin can update the feature-toggle columns", async () => {
+    await withTransaction(async (client) => {
+      await impersonate(client, asAdmin());
+      await client.query(
+        "update public.app_settings set application_delete_enabled = false, user_delete_enabled = false, history_delete_enabled = false where id = 1"
+      );
+      const { rows } = await client.query(
+        "select application_delete_enabled, user_delete_enabled, history_delete_enabled from public.app_settings where id = 1"
+      );
+      expect(rows[0]).toEqual({
+        application_delete_enabled: false,
+        user_delete_enabled: false,
+        history_delete_enabled: false,
+      });
+    });
+  });
+
   it("nobody can insert a second row", async () => {
     await withTransaction(async (client) => {
       await impersonate(client, asAdmin());

@@ -21,8 +21,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { updateResendFromAddress, updateStaffAlertTemplateId } from "@/app/admin/settings/actions";
+import { updateResendFromAddress, updateStaffAlertTemplateId, updateFeatureToggle } from "@/app/admin/settings/actions";
 import type { EmailTemplateSummary } from "@/lib/email/send";
+import FeatureToggleRow from "@/components/admin/FeatureToggleRow";
 
 // Sentinel for the "keep the built-in message" option -- an actual
 // empty-string SelectItem value is a known footgun with this project's
@@ -35,10 +36,16 @@ export default function AppSettingsForm({
   initialFromAddress,
   initialStaffAlertTemplateId,
   templates,
+  applicationDeleteEnabled,
+  userDeleteEnabled,
+  historyDeleteEnabled,
 }: {
   initialFromAddress: string;
   initialStaffAlertTemplateId: string | null;
   templates: EmailTemplateSummary[];
+  applicationDeleteEnabled: boolean;
+  userDeleteEnabled: boolean;
+  historyDeleteEnabled: boolean;
 }) {
   const [value, setValue] = useState(initialFromAddress);
   const [pending, startTransition] = useTransition();
@@ -233,6 +240,28 @@ export default function AppSettingsForm({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <fieldset className="mt-6 flex flex-col divide-y divide-[var(--admin-border)] rounded-lg border border-[var(--admin-border)] p-4">
+        <legend className="px-1 text-sm font-semibold">Admin feature toggles</legend>
+        <FeatureToggleRow
+          label="Delete application"
+          description="Lets admins permanently delete a job application and all of its documents, screening answers, and notes."
+          checked={applicationDeleteEnabled}
+          onConfirm={(next) => updateFeatureToggle("application_delete_enabled", next)}
+        />
+        <FeatureToggleRow
+          label="Delete non-admin users"
+          description="Lets admins permanently delete a member or staff account from Users."
+          checked={userDeleteEnabled}
+          onConfirm={(next) => updateFeatureToggle("user_delete_enabled", next)}
+        />
+        <FeatureToggleRow
+          label="Delete history entries"
+          description="Lets admins permanently delete audit history entries."
+          checked={historyDeleteEnabled}
+          onConfirm={(next) => updateFeatureToggle("history_delete_enabled", next)}
+        />
+      </fieldset>
     </div>
   );
 }

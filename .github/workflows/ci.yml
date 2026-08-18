@@ -29,3 +29,18 @@ jobs:
       - run: npm run lint
 
       - run: npm run test:unit
+
+  # main only ever receives promotions from dev -- never a direct feature or
+  # hotfix branch. Required as a status check on the "Protect main" ruleset
+  # so this is enforced by CI, not by someone remembering the rule. See
+  # CONTRIBUTING.md's "How to contribute code" section.
+  main-only-from-dev:
+    if: github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify this PR is a promotion from dev
+        run: |
+          if [ "${{ github.head_ref }}" != "dev" ]; then
+            echo "PRs into main must come from dev -- branch directly off dev instead of main, even for an urgent fix, then promote from there." >&2
+            exit 1
+          fi

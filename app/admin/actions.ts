@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import type { Database } from "@/lib/database.types";
 import {
   createApplicationDocumentSignedUrl,
+  deleteApplicationDocumentObject,
   deleteJobPhotoObject,
   JobPhotoUploadError,
   uploadJobPhoto,
@@ -13,6 +14,7 @@ import {
 import { isReviewerNoteEmpty, sanitizeReviewerNoteHtml } from "@/lib/reviewer-notes";
 import { getEmailTemplateDetail, sendTemplateEmail, type EmailTemplateDetail } from "@/lib/email/send";
 import { resolveRecipientVariables, type MassEmailRecipient } from "@/lib/mass-email";
+import { getApplicationDeleteEnabled, getHistoryDeleteEnabled } from "@/lib/settings";
 
 type JobStatus = Database["public"]["Enums"]["job_status"];
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
@@ -346,6 +348,14 @@ export async function bulkDeleteHistory(
   scope: HistoryDeleteScope,
   filtersSnapshot: Record<string, unknown> | null
 ): Promise<{ error: string } | { deletedCount: number }> {
+  // Real enforcement, not just a hidden button -- RLS already lets any
+  // admin call this RPC regardless of the toggle, so the toggle has to be
+  // checked here in the TS layer (this action had no such check at all
+  // before, unlike every other admin action in this file).
+  if (!(await getHistoryDeleteEnabled())) {
+    return { error: "Deleting history entries is currently turned off in Settings." };
+  }
+
   const supabase = createClerkSupabaseClient();
   const { data, error } = await supabase.rpc("admin_bulk_delete_history", {
     p_ids: ids,
@@ -434,6 +444,43 @@ export async function updateApplicationStatus(
   const supabase = createClerkSupabaseClient();
   const { error } = await supabase.from("applications").update({ status }).eq("id", id);
   if (error) return { error: error.message };
+
+  revalidatePath("/admin/applications");
+  revalidatePath(`/admin/applications/${id}`);
+  return null;
+}
+
+// Admin-only, unlike updateApplicationStatus above -- deletion is
+// deliberately more restricted than the staff/admin bar every other
+// applications action uses.
+export async function deleteApplication(id: string): Promise<{ error: string } | null> {
+  const { sessionClaims } = await auth();
+  const role = sessionClaims?.user_role as string | undefined;
+  if (role !== "admin") return { error: "Not authorized." };
+
+  if (!(await getApplicationDeleteEnabled())) {
+    return { error: "Deleting applications is currently turned off in Settings." };
+  }
+
+  const supabase = createClerkSupabaseClient();
+  const { data: documents } = await supabase
+    .from("application_documents")
+    .select("storage_path")
+    .eq("application_id", id);
+
+  // The 6 child tables (documents, team preferences, screening answers,
+  // status history, reviewer notes, email log) all cascade-delete via FK,
+  // so only the parent row needs deleting here. applications_audit_log's
+  // trigger is security definer and already strips PII before writing, so
+  // this leaves a safe, redacted delete record behind -- nothing else to
+  // do there.
+  const { error } = await supabase.from("applications").delete().eq("id", id);
+  if (error) return { error: error.message };
+
+  // Best-effort, same reasoning as deleteJob's photo cleanup: the row is
+  // already gone either way.
+  const paths = (documents ?? []).map((d) => d.storage_path).filter((p): p is string => Boolean(p));
+  await Promise.all(paths.map((path) => deleteApplicationDocumentObject(supabase, path)));
 
   revalidatePath("/admin/applications");
   revalidatePath(`/admin/applications/${id}`);

@@ -46,6 +46,18 @@ export function mapStorageError(message: string, documentType: "resume" | "trans
   return `We couldn't upload your ${label}. Please check your connection and try again.`;
 }
 
+// Best-effort cleanup, same reasoning as deleteJobPhotoObject below --
+// called only after the applications row delete has already succeeded (its
+// cascade already cleaned up the application_documents rows themselves), so
+// a failure here just leaves an orphaned Storage object rather than
+// blocking the delete the admin asked for.
+export async function deleteApplicationDocumentObject(
+  supabase: SupabaseClient<Database>,
+  storagePath: string
+): Promise<void> {
+  await supabase.storage.from(BUCKET).remove([storagePath]);
+}
+
 export class JobPhotoUploadError extends Error {}
 
 const JOB_PHOTOS_BUCKET = "job-photos";

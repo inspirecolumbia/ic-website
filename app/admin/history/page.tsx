@@ -1,6 +1,7 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { createClerkSupabaseClient } from "@/lib/supabase/clerk";
 import { resolveActorName, resolveJobTitle } from "@/lib/history";
+import { getHistoryDeleteEnabled } from "@/lib/settings";
 import AdminTabs from "@/components/admin/AdminTabs";
 import HistoryTable from "@/components/admin/HistoryTable";
 
@@ -10,9 +11,10 @@ export default async function HistoryPage() {
   const isAdmin = role === "admin";
 
   const supabase = createClerkSupabaseClient();
-  const [{ data: entries }, { data: jobs }] = await Promise.all([
+  const [{ data: entries }, { data: jobs }, historyDeleteEnabled] = await Promise.all([
     supabase.from("audit_log").select("*").order("created_at", { ascending: false }).limit(100),
     supabase.from("jobs").select("id, title"),
+    getHistoryDeleteEnabled(),
   ]);
   const jobTitleByJobId = new Map((jobs ?? []).map((job) => [job.id, job.title]));
 
@@ -42,7 +44,7 @@ export default async function HistoryPage() {
     <div>
       <AdminTabs role={role} />
       <h1 className="mb-6 text-xl font-semibold [font-family:var(--font-serif)]">History</h1>
-      <HistoryTable rows={rows} isAdmin={isAdmin} />
+      <HistoryTable rows={rows} isAdmin={isAdmin} deletionEnabled={historyDeleteEnabled} />
     </div>
   );
 }

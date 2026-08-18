@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { MoreVertical } from "lucide-react";
-import { promoteUser, restoreUserAccess, revokeUserAccess } from "@/app/admin/users/actions";
+import { deleteUserAccount, promoteUser, restoreUserAccess, revokeUserAccess } from "@/app/admin/users/actions";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -71,13 +71,16 @@ function UserRow({
   user,
   isCurrentUser,
   onChanged,
+  userDeleteEnabled,
 }: {
   user: ManagedUser;
   isCurrentUser: boolean;
   onChanged: (message: string) => void;
+  userDeleteEnabled: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [confirmRevoke, setConfirmRevoke] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function runAction(action: () => Promise<{ error: string } | null>, successMessage: string) {
@@ -144,9 +147,19 @@ function UserRow({
               />
               <DropdownMenuContent align="end">
                 {user.banned ? (
-                  <DropdownMenuItem onClick={() => runAction(() => restoreUserAccess(user.id), "Access restored.")}>
-                    Restore access
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem onClick={() => runAction(() => restoreUserAccess(user.id), "Access restored.")}>
+                      Restore access
+                    </DropdownMenuItem>
+                    {userDeleteEnabled && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem variant="destructive" onClick={() => setConfirmDelete(true)}>
+                          Delete user
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </>
                 ) : (
                   <>
                     {user.role !== "member" && (
@@ -167,6 +180,11 @@ function UserRow({
                     <DropdownMenuItem variant="destructive" onClick={() => setConfirmRevoke(true)}>
                       Revoke access
                     </DropdownMenuItem>
+                    {userDeleteEnabled && (
+                      <DropdownMenuItem variant="destructive" onClick={() => setConfirmDelete(true)}>
+                        Delete user
+                      </DropdownMenuItem>
+                    )}
                   </>
                 )}
               </DropdownMenuContent>
@@ -203,6 +221,31 @@ function UserRow({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Permanently delete {user.name}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This permanently removes their account from Clerk entirely, not just their access.
+                This can&apos;t be undone and they would need to register again from scratch.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                disabled={pending}
+                onClick={() => {
+                  setConfirmDelete(false);
+                  runAction(() => deleteUserAccount(user.id), "Account deleted.");
+                }}
+              >
+                {pending ? "Deleting..." : "Delete user"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </TableCell>
     </TableRow>
   );
@@ -212,10 +255,12 @@ export default function UserRoleManager({
   users,
   currentUserId,
   fetchCap,
+  userDeleteEnabled,
 }: {
   users: ManagedUser[];
   currentUserId: string | null;
   fetchCap: number;
+  userDeleteEnabled: boolean;
 }) {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
@@ -310,6 +355,7 @@ export default function UserRoleManager({
                 user={user}
                 isCurrentUser={user.id === currentUserId}
                 onChanged={setStatusMessage}
+                userDeleteEnabled={userDeleteEnabled}
               />
             ))}
           </TableBody>

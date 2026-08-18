@@ -134,7 +134,16 @@ function SortableHead({
   );
 }
 
-export default function HistoryTable({ rows, isAdmin }: { rows: HistoryRow[]; isAdmin: boolean }) {
+export default function HistoryTable({
+  rows,
+  isAdmin,
+  deletionEnabled,
+}: {
+  rows: HistoryRow[];
+  isAdmin: boolean;
+  deletionEnabled: boolean;
+}) {
+  const canDelete = isAdmin && deletionEnabled;
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState<string>("all");
   const [actorFilter, setActorFilter] = useState<string>("all");
@@ -377,7 +386,7 @@ export default function HistoryTable({ rows, isAdmin }: { rows: HistoryRow[]; is
         )}
       </div>
 
-      {isAdmin && selectedIds.size > 0 && (
+      {canDelete && selectedIds.size > 0 && (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--admin-border)] bg-[var(--admin-brand-soft)] px-3 py-2">
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-sm font-medium text-[var(--admin-text)]">
@@ -462,7 +471,7 @@ export default function HistoryTable({ rows, isAdmin }: { rows: HistoryRow[]; is
         <Table className="w-full">
           <TableHeader>
             <TableRow>
-              {isAdmin && (
+              {canDelete && (
                 <TableHead className="w-10">
                   <Checkbox
                     checked={pageAllSelected}
@@ -499,7 +508,7 @@ export default function HistoryTable({ rows, isAdmin }: { rows: HistoryRow[]; is
                   (row.id === selectedRowId ? "bg-[var(--admin-brand-soft)]" : "")
                 }
               >
-                {isAdmin && (
+                {canDelete && (
                   <TableCell
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}
