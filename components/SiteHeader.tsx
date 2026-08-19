@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRef, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 type SiteHeaderProps = {
   currentPath: string;
@@ -19,8 +19,6 @@ const navLinks = [
 ];
 
 export default function SiteHeader({ currentPath }: SiteHeaderProps) {
-  const liRefs = useRef<(HTMLLIElement | null)[]>([]);
-  const [indicator, setIndicator] = useState({ left: 0, width: 0, ready: false });
   const [menuOpen, setMenuOpen] = useState(false);
   const [prevPath, setPrevPath] = useState(currentPath);
 
@@ -28,14 +26,6 @@ export default function SiteHeader({ currentPath }: SiteHeaderProps) {
     setPrevPath(currentPath);
     setMenuOpen(false);
   }
-
-  useEffect(() => {
-    const activeIndex = navLinks.findIndex((l) => l.href === currentPath);
-    const li = liRefs.current[activeIndex];
-    if (li) {
-      setIndicator({ left: li.offsetLeft, width: li.offsetWidth, ready: true });
-    }
-  }, [currentPath]);
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
@@ -61,32 +51,25 @@ export default function SiteHeader({ currentPath }: SiteHeaderProps) {
         <div className="hidden items-center gap-8 md:flex">
           <nav aria-label="Primary">
             <ul className="relative m-0 flex list-none items-center gap-6 p-0">
-              {navLinks.map(({ href, label }, i) => {
+              {navLinks.map(({ href, label }) => {
                 const isActive = currentPath === href;
                 return (
-                  <li key={href} ref={(el) => { liRefs.current[i] = el; }}>
+                  <li key={href}>
                     <Link
                       href={href}
-                      className={`inline-block px-0.5 py-1 text-[1.05rem] font-semibold no-underline transition-colors duration-200 ${isActive ? "text-[var(--brand)]" : "text-[var(--ink-muted)] hover:text-[var(--ink)]"}`}
+                      className={`inline-block border-b-2 px-0.5 py-1 text-[1.05rem] font-semibold no-underline transition-colors duration-200 ${isActive ? "border-[var(--brand)] text-[var(--brand)]" : "border-transparent text-[var(--ink-muted)] hover:border-[var(--brand)] hover:text-[var(--ink)]"}`}
                     >
                       {label}
                     </Link>
                   </li>
                 );
               })}
-              {indicator.ready && (
-                <motion.div
-                  className="absolute bottom-0 h-0.5 bg-[var(--brand)]"
-                  animate={{ left: indicator.left, width: indicator.width }}
-                  transition={{ type: "spring", stiffness: 500, damping: 25 }}
-                />
-              )}
             </ul>
           </nav>
 
           <Link
             href="/donate"
-            className="donate-glow shrink-0 rounded-full bg-[var(--brand)] px-6 py-2.5 font-bold text-white no-underline transition-colors duration-150 hover:bg-[var(--brand-hover)]"
+            className="shrink-0 rounded-full bg-[var(--brand)] px-6 py-2.5 font-bold text-white no-underline transition-colors duration-150 hover:bg-[var(--brand-hover)]"
           >
             Donate
           </Link>
@@ -138,7 +121,7 @@ export default function SiteHeader({ currentPath }: SiteHeaderProps) {
               <li className="mt-3">
                 <Link
                   href="/donate"
-                  className="donate-glow block rounded-full bg-[var(--brand)] px-6 py-3 text-center font-bold text-white no-underline"
+                  className="block rounded-full bg-[var(--brand)] px-6 py-3 text-center font-bold text-white no-underline"
                 >
                   Donate
                 </Link>
