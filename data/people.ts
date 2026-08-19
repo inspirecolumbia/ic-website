@@ -30,6 +30,13 @@ export const executiveLeadership: Person[] = [
     bio: "Tyler is a Computer Science student at the University of South Carolina with 8+ years of experience in graphic design and stage production.",
     headshot: "/headshots/tyler.webp",
   },
+  {
+    slug: "maximus-fernandez",
+    name: "Maximus Fernandez",
+    title: "Chief Technology Officer",
+    bio: "Maximus is a Computer Science student at the University of South Carolina.",
+    headshot: "/headshots/maximus.jpg",
+  },
 ];
 
 export const boardOfDirectors: Person[] = [
@@ -67,31 +74,5 @@ export const boardOfDirectors: Person[] = [
     title: "Board Member",
     bio: "Tim is a Public Health student at the University of South Carolina and previously served as a Curation Assistant for TEDxCongaree Vista.",
     headshot: "/headshots/tim.jpg",
-  },
-];
-
-// No real Team roster exists yet — placeholders keep the pattern in place until
-// real names, titles, bios, and headshots are supplied.
-export const team: Person[] = [
-  {
-    slug: "team-placeholder-1",
-    name: "Team member coming soon",
-    title: "Role TBD",
-    bio: "This team roster is being finalized. Check back soon to meet the associates and volunteers behind Inspire Columbia's programming.",
-    placeholder: true,
-  },
-  {
-    slug: "team-placeholder-2",
-    name: "Team member coming soon",
-    title: "Role TBD",
-    bio: "This team roster is being finalized. Check back soon to meet the associates and volunteers behind Inspire Columbia's programming.",
-    placeholder: true,
-  },
-  {
-    slug: "team-placeholder-3",
-    name: "Team member coming soon",
-    title: "Role TBD",
-    bio: "This team roster is being finalized. Check back soon to meet the associates and volunteers behind Inspire Columbia's programming.",
-    placeholder: true,
   },
 ];
