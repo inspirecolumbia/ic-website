@@ -36,6 +36,12 @@ import {
 // value is translated to/from "" at the boundary instead.
 const UNSELECTED_TEAM = "__unselected__";
 
+// Sentinel for any other single-choice dropdown (currently just School)
+// that needs the same "show a placeholder instead of an empty string"
+// treatment as the team-preference Selects above -- same reasoning, its
+// own constant since the two dropdowns are otherwise unrelated.
+const UNSELECTED_OPTION = "__unselected_option__";
+
 // Shared visual treatment for a field the server just flagged as invalid --
 // applied to the field's wrapper, not the input itself, so it works
 // uniformly across Input/RadioGroup/Select/FileUploadField without needing
@@ -325,6 +331,57 @@ function RadioWithOther({
   );
 }
 
+// A single-choice dropdown with the same post-reset-remount hidden input
+// pattern as RadioWithOther above, for a field with too many options for
+// a radio list to read comfortably (School's 6+ options).
+function SelectField({
+  name,
+  options,
+  placeholder,
+  resetVersion,
+  onChangeClearError,
+}: {
+  name: string;
+  options: string[];
+  placeholder: string;
+  resetVersion: number;
+  onChangeClearError?: () => void;
+}) {
+  const [value, setValue] = useState("");
+
+  return (
+    <div>
+      <Select
+        value={value || UNSELECTED_OPTION}
+        onValueChange={(v) => {
+          setValue(v === UNSELECTED_OPTION ? "" : (v as string));
+          onChangeClearError?.();
+        }}
+      >
+        <SelectTrigger id={name} className={fieldClassName}>
+          {/* base-ui's SelectValue can't infer a plain-text label from a
+              matched SelectItem on its own -- same workaround as the
+              team-preference Select below. */}
+          <SelectValue placeholder={placeholder}>
+            {(v: string) => (v === UNSELECTED_OPTION ? placeholder : v)}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option} value={option}>
+              {option}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {/* No `required` here -- same reasoning as RadioWithOther's hidden
+          input above: emptiness is caught server-side. Keyed on
+          resetVersion for the same post-submit-reset reason. */}
+      <input type="hidden" key={`${name}-${resetVersion}`} name={name} value={value} />
+    </div>
+  );
+}
+
 export default function JobApplicationForm({
   jobId,
   jobTitle,
@@ -596,16 +653,15 @@ export default function JobApplicationForm({
             <FormSection title="Education">
               <div className="grid gap-6 sm:grid-cols-2">
                 <div {...fieldErrorProps("school")} className={cn(erroredField === "school" && erroredFieldClassName)}>
-                  <Label>
+                  <Label htmlFor="school">
                     School
                     <Required />
                   </Label>
                   <div className="mt-2">
-                    <RadioWithOther
+                    <SelectField
                       name="school"
                       options={SCHOOLS}
-                      otherPlaceholder="Enter your school"
-                      allowOther={false}
+                      placeholder="Choose your school"
                       resetVersion={resetVersion}
                       onChangeClearError={() => clearFieldError("school")}
                     />
@@ -835,8 +891,8 @@ export default function JobApplicationForm({
                         Yes/No group below, not one single control, so
                         there's no one element id it could correctly point
                         at (each RadioGroupItem has its own label already).
-                        Matches the School/Year of study Labels above,
-                        which don't use htmlFor for the same reason. */}
+                        Matches the Year of study Label above, which
+                        doesn't use htmlFor for the same reason. */}
                     <Label className="mb-1.5">
                       {config.question}
                       <Required />

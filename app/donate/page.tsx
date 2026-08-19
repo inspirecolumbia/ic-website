@@ -2,10 +2,18 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import SiteHeader from "../../components/SiteHeader";
 
-const impactPhotos = [
+const leftImpactPhotos = [
   { src: "/pictures/tedx-team-lineup-applause.jpg", alt: "The Inspire Columbia team applauding together on stage at TEDxCongaree Vista" },
   { src: "/pictures/tedx-speaker-networking.jpg", alt: "A TEDxCongaree Vista speaker networking with attendees after their talk" },
   { src: "/pictures/tedx-staff-candid-coffee.jpg", alt: "Inspire Columbia staff sharing a candid moment over coffee" },
+  { src: "/pictures/community-program-usc-group-photo.jpg", alt: "Students posing for a group photo inside a University of South Carolina meeting room" },
+];
+
+const rightImpactPhotos = [
+  { src: "/pictures/tedx-organizers-on-stage.jpg", alt: "Three TEDxCongaree Vista organizers standing on stage in front of the event's title screen" },
+  { src: "/pictures/tedx-team-on-stage-speaking.jpg", alt: "Inspire Columbia team members on stage, one speaking into a microphone" },
+  { src: "/pictures/community-program-group-cityhall.jpg", alt: "Students posing together on the steps of Columbia City Hall during an Inspire Columbia summer program" },
+  { src: "/pictures/community-program-cityhall-welcome.jpg", alt: "A speaker welcoming students inside a Columbia City Hall meeting room" },
 ];
 
 export const metadata: Metadata = {
@@ -28,8 +36,22 @@ export default function DonationsPage() {
       <SiteHeader currentPath="/donate" />
       <main className="text-[var(--ink)]">
         <section className="bg-[var(--surface-blue)] py-14 md:py-[4.5rem]">
-          <div className="mx-auto w-full max-w-[760px] px-6 md:px-8">
-            <div className="max-w-[65ch]">
+          <div className="mx-auto w-full max-w-[1200px] px-6 md:px-8">
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-[1fr_minmax(0,2fr)_1fr] md:gap-16">
+              <div className="hidden flex-col gap-4 md:flex">
+                {leftImpactPhotos.map((photo) => (
+                  <div key={photo.src} className="aspect-[4/3] overflow-hidden rounded-[10px]">
+                    <Image
+                      src={photo.src}
+                      alt={photo.alt}
+                      width={800}
+                      height={600}
+                      className="block h-full w-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+
               <div>
                 <p className="m-0 text-[0.9rem] font-bold uppercase tracking-[0.08em] text-[var(--ink-muted)]">
                   Support Our Mission
@@ -42,7 +64,7 @@ export default function DonationsPage() {
                   and keep programs accessible to everyone.
                 </p>
                 <a
-                  className="donate-glow mt-6 inline-block rounded-full border-2 border-transparent bg-[var(--brand)] px-7 py-3.5 font-bold text-white no-underline transition-colors duration-150 hover:bg-[var(--brand-hover)]"
+                  className="mt-6 inline-block rounded-full border-2 border-transparent bg-[var(--brand)] px-7 py-3.5 font-bold text-white no-underline transition-colors duration-150 hover:bg-[var(--brand-hover)]"
                   href="https://www.zeffy.com/en-US/donation-form/support-events-that-inspire-in-columbia-sc"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -65,30 +87,20 @@ export default function DonationsPage() {
                     .
                 </p>
               </div>
-            </div>
-          </div>
-        </section>
 
-        <section className="bg-[var(--surface)] py-13 md:py-16">
-          <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
-            <h2 className="mb-8 mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
-              Your Support in Action
-            </h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              {impactPhotos.map((photo) => (
-                <div
-                  key={photo.src}
-                  className="aspect-[4/3] overflow-hidden rounded-[10px]"
-                >
-                  <Image
-                    src={photo.src}
-                    alt={photo.alt}
-                    width={800}
-                    height={600}
-                    className="block h-full w-full object-cover"
-                  />
-                </div>
-              ))}
+              <div className="hidden flex-col gap-4 md:flex">
+                {rightImpactPhotos.map((photo) => (
+                  <div key={photo.src} className="aspect-[4/3] overflow-hidden rounded-[10px]">
+                    <Image
+                      src={photo.src}
+                      alt={photo.alt}
+                      width={800}
+                      height={600}
+                      className="block h-full w-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>

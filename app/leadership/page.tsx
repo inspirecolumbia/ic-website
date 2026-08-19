@@ -2,19 +2,19 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import LeadershipSection from "@/components/LeadershipSection";
 import SiteHeader from "@/components/SiteHeader";
-import { executiveLeadership, boardOfDirectors, team } from "@/data/people";
+import { executiveLeadership, boardOfDirectors } from "@/data/people";
 
 export const metadata: Metadata = {
   title: "Leadership",
-  description: "Meet the students leading Inspire Columbia — Executive Leadership, Board of Directors, and Team, in Columbia, South Carolina.",
+  description: "Meet the students leading Inspire Columbia — Executive Leadership and Board of Directors, in Columbia, South Carolina.",
   openGraph: {
     title: "Leadership | Inspire Columbia",
-    description: "Meet the students leading Inspire Columbia — Executive Leadership, Board of Directors, and Team, in Columbia, South Carolina.",
+    description: "Meet the students leading Inspire Columbia — Executive Leadership and Board of Directors, in Columbia, South Carolina.",
     url: "https://inspirecolumbia.org/leadership",
   },
   twitter: {
     title: "Leadership | Inspire Columbia",
-    description: "Meet the students leading Inspire Columbia — Executive Leadership, Board of Directors, and Team, in Columbia, South Carolina.",
+    description: "Meet the students leading Inspire Columbia — Executive Leadership and Board of Directors, in Columbia, South Carolina.",
   },
 };
 
@@ -61,16 +61,6 @@ export default function LeadershipPage() {
               title="Board of Directors"
               description="Our board guides the strategic direction of the organization and is responsible for ensuring we fulfill our mission."
               people={boardOfDirectors}
-            />
-          </div>
-        </section>
-
-        <section className="bg-[var(--surface)] py-13 md:py-16">
-          <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
-            <LeadershipSection
-              title="Team"
-              description="The associates and volunteers who bring Inspire Columbia's events and programming to life."
-              people={team}
             />
           </div>
         </section>
