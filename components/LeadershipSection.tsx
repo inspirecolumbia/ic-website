@@ -16,7 +16,7 @@ export default function LeadershipSection({ title, description, people }: Leader
       {description && (
         <p className="mb-10 max-w-[60ch] text-[1.1rem] text-[var(--ink-muted)]">{description}</p>
       )}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="flex flex-col gap-4">
         {people.map((person) => (
           <PersonCard key={person.slug} person={person} />
         ))}

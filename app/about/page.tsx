@@ -3,6 +3,12 @@ import Image from "next/image";
 import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
 
+const missionPhotos = [
+  { src: "/pictures/community-program-workshop-session.jpg", alt: "A program leader speaking to a small group of students during a workshop session" },
+  { src: "/pictures/community-program-certificates.jpg", alt: "Students holding up certificates of completion" },
+  { src: "/pictures/tedx-speaker-solo-stage.jpg", alt: "A speaker addressing the audience from the TEDxCongaree Vista stage" },
+];
+
 export const metadata: Metadata = {
   title: "About",
   description: "Learn about Inspire Columbia — a 501(c)(3) nonprofit led by students in Columbia, South Carolina, producing leadership events and educational programming.",
@@ -38,6 +44,19 @@ export default function AboutPage() {
 
         <section className="bg-[var(--surface)] py-13 md:py-16">
           <div className="mx-auto w-full max-w-[1100px] px-6 md:px-8">
+            <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {missionPhotos.map((photo) => (
+                <div key={photo.src} className="aspect-[4/3] overflow-hidden rounded-[10px]">
+                  <Image
+                    src={photo.src}
+                    alt={photo.alt}
+                    width={800}
+                    height={600}
+                    className="block h-full w-full object-cover"
+                  />
+                </div>
+              ))}
+            </div>
             <h2 className="mb-8 mt-0 [font-family:var(--font-serif)] text-[clamp(1.55rem,3vw,2.3rem)] font-semibold">
               Mission Statement
             </h2>

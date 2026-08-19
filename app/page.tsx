@@ -96,30 +96,29 @@ export default function Home() {
                     Visit Event Website
                   </a>
                 </div>
-                  {/*
                 <div className="rounded-[10px] border border-[var(--line)] bg-[var(--card-public)] p-6 flex flex-col gap-4 transition-all duration-150 hover:border-[var(--brand)] hover:shadow-[0_8px_24px_rgba(29,78,216,0.12)]">
                   <Image
-                    src="/screwupnights-placeholder.svg"
-                    alt="SCrewUp Nights logo placeholder"
-                    width={1400}
-                    height={504}
-                    className="block h-auto w-full max-w-[340px]"
+                    src="/screwupnights-logo.png"
+                    alt="SCrewUp Nights logo"
+                    width={757}
+                    height={592}
+                    className="block h-auto w-full max-w-[180px]"
                   />
                   <p className="m-0 text-[1.05rem]">
+                    <strong>September 2nd, 2026</strong><br /><br />
                     SCrewUp Nights is a new Inspire Columbia project celebrating the stories
                     behind setbacks, bringing the community together to share and learn from
                     the moments that didn&apos;t go as planned.
                   </p>
                   <a
                     className="inline-block self-start rounded-full border-2 border-[var(--brand)] bg-[var(--card-public)] px-6 py-3 font-bold text-[var(--brand)] no-underline transition-colors duration-150 hover:bg-[var(--brand)] hover:text-white"
-                    href="https://screwupnights.com"
+                    href="https://www.screwupnights.com"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
                     Visit Event Website
                   </a>
                 </div>
-                  */}
               </div>
             </div>
           </div>
