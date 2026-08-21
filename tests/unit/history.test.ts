@@ -13,7 +13,7 @@ describe("resolveJobTitle", () => {
   });
 
   it("resolves an application entry's job title via job_id, not a nonexistent title field", () => {
-    const entry = { table_name: "applications", new_data: { job_id: "job-1", status: "under_review" }, old_data: null };
+    const entry = { table_name: "applications", new_data: { job_id: "job-1", status: "still_in_consideration" }, old_data: null };
     const jobTitleByJobId = new Map([["job-1", "Associate"]]);
     expect(resolveJobTitle(entry, jobTitleByJobId)).toBe("Associate");
   });

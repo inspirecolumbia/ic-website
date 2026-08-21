@@ -35,7 +35,7 @@ describe("application_status_history RLS", () => {
       await impersonate(client, asAnon());
       await expect(
         client.query(
-          "insert into public.application_status_history (application_id, new_status, changed_by_clerk_user_id) values ($1, 'under_review', 'x')",
+          "insert into public.application_status_history (application_id, new_status, changed_by_clerk_user_id) values ($1, 'still_in_consideration', 'x')",
           [appId]
         )
       ).rejects.toThrow(/permission denied/i);
@@ -49,7 +49,7 @@ describe("application_status_history RLS", () => {
       await impersonate(client, asStaff());
       await expect(
         client.query(
-          "insert into public.application_status_history (application_id, new_status, changed_by_clerk_user_id) values ($1, 'under_review', 'x')",
+          "insert into public.application_status_history (application_id, new_status, changed_by_clerk_user_id) values ($1, 'still_in_consideration', 'x')",
           [appId]
         )
       ).rejects.toThrow(/permission denied/i);
@@ -60,7 +60,7 @@ describe("application_status_history RLS", () => {
     await withTransaction(async (client) => {
       const jobId = await seedJob(client);
       const appId = await seedApplication(client, jobId);
-      await client.query("update public.applications set status = 'under_review' where id = $1", [appId]);
+      await client.query("update public.applications set status = 'still_in_consideration' where id = $1", [appId]);
       await impersonate(client, asStaff());
       const { rows } = await client.query(
         "select * from public.application_status_history where application_id = $1",
@@ -74,7 +74,7 @@ describe("application_status_history RLS", () => {
     await withTransaction(async (client) => {
       const jobId = await seedJob(client);
       const appId = await seedApplication(client, jobId);
-      await client.query("update public.applications set status = 'under_review' where id = $1", [appId]);
+      await client.query("update public.applications set status = 'still_in_consideration' where id = $1", [appId]);
       await impersonate(client, asMember());
       const { rows } = await client.query("select * from public.application_status_history");
       expect(rows).toHaveLength(0);
@@ -86,7 +86,7 @@ describe("application_status_history RLS", () => {
       const jobId = await seedJob(client);
       const appId = await seedApplication(client, jobId);
       await impersonate(client, asStaff());
-      await client.query("update public.applications set status = 'under_review' where id = $1", [appId]);
+      await client.query("update public.applications set status = 'still_in_consideration' where id = $1", [appId]);
 
       await impersonate(client, asAdmin());
       const { rows } = await client.query(
@@ -95,7 +95,7 @@ describe("application_status_history RLS", () => {
       );
       expect(rows).toHaveLength(1);
       expect(rows[0].old_status).toBe("submitted");
-      expect(rows[0].new_status).toBe("under_review");
+      expect(rows[0].new_status).toBe("still_in_consideration");
       expect(rows[0].changed_by_role).toBe("staff");
     });
   });

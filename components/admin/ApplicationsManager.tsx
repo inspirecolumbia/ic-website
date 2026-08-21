@@ -43,12 +43,11 @@ const PAGE_SIZE = 10;
 
 const statusBadgeClass: Record<string, string> = {
   submitted: "bg-[var(--admin-neutral-soft)] text-[var(--admin-text-muted)]",
-  under_review: "bg-[var(--admin-brand-soft)] text-[var(--admin-brand)]",
-  interviewing: "bg-[var(--admin-brand-soft)] text-[var(--admin-brand)]",
+  still_in_consideration: "bg-[var(--admin-brand-soft)] text-[var(--admin-brand)]",
+  round_1: "bg-[var(--admin-brand-soft)] text-[var(--admin-brand)]",
+  round_2: "bg-[var(--admin-brand-soft)] text-[var(--admin-brand)]",
   offer: "bg-[var(--admin-success-soft)] text-[var(--admin-success)]",
-  hired: "bg-[var(--admin-success-soft)] text-[var(--admin-success)]",
   rejected: "bg-[var(--admin-danger-soft)] text-[var(--admin-danger)]",
-  withdrawn: "bg-[var(--admin-danger-soft)] text-[var(--admin-danger)]",
 };
 
 function applicantName(row: ApplicationListRow) {

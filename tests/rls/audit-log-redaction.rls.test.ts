@@ -75,7 +75,7 @@ describe("application audit_log redaction", () => {
       const appId = inserted.rows[0].id;
 
       await impersonate(client, asStaff());
-      await client.query("update public.applications set status = 'under_review' where id = $1", [appId]);
+      await client.query("update public.applications set status = 'still_in_consideration' where id = $1", [appId]);
 
       await impersonate(client, asAdmin());
       const { rows } = await client.query(

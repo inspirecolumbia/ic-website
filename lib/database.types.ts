@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.15"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -45,6 +40,7 @@ export type Database = {
           history_delete_enabled: boolean
           id: number
           resend_from_address: string | null
+          staff_alert_email: string | null
           staff_alert_template_id: string | null
           updated_at: string
           user_delete_enabled: boolean
@@ -54,6 +50,7 @@ export type Database = {
           history_delete_enabled?: boolean
           id?: number
           resend_from_address?: string | null
+          staff_alert_email?: string | null
           staff_alert_template_id?: string | null
           updated_at?: string
           user_delete_enabled?: boolean
@@ -63,6 +60,7 @@ export type Database = {
           history_delete_enabled?: boolean
           id?: number
           resend_from_address?: string | null
+          staff_alert_email?: string | null
           staff_alert_template_id?: string | null
           updated_at?: string
           user_delete_enabled?: boolean
@@ -403,6 +401,7 @@ export type Database = {
       }
       jobs: {
         Row: {
+          accepting_applications: boolean
           application_template_id: string | null
           apply_url: string | null
           closing_date: string | null
@@ -422,6 +421,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accepting_applications?: boolean
           application_template_id?: string | null
           apply_url?: string | null
           closing_date?: string | null
@@ -441,6 +441,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accepting_applications?: boolean
           application_template_id?: string | null
           apply_url?: string | null
           closing_date?: string | null
@@ -555,12 +556,11 @@ export type Database = {
     Enums: {
       application_status:
         | "submitted"
-        | "under_review"
-        | "interviewing"
+        | "still_in_consideration"
+        | "round_1"
+        | "round_2"
         | "offer"
-        | "hired"
         | "rejected"
-        | "withdrawn"
       job_status: "draft" | "published" | "closed" | "archived"
     }
     CompositeTypes: {
@@ -694,14 +694,14 @@ export const Constants = {
     Enums: {
       application_status: [
         "submitted",
-        "under_review",
-        "interviewing",
+        "still_in_consideration",
+        "round_1",
+        "round_2",
         "offer",
-        "hired",
         "rejected",
-        "withdrawn",
       ],
       job_status: ["draft", "published", "closed", "archived"],
     },
   },
 } as const
+

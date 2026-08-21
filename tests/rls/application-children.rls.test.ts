@@ -163,7 +163,7 @@ describe("cascade delete", () => {
       for (const { insertSql } of childTables) {
         await client.query(insertSql(appId));
       }
-      await client.query("update public.applications set status = 'under_review' where id = $1", [appId]);
+      await client.query("update public.applications set status = 'still_in_consideration' where id = $1", [appId]);
 
       await impersonate(client, asAdmin());
       const { rowCount } = await client.query("delete from public.applications where id = $1", [appId]);

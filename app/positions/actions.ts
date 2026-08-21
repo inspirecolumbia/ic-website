@@ -9,12 +9,14 @@ import {
 import { ApplicationUploadError, uploadApplicationDocument } from "@/lib/storage";
 import { SCREENING_QUESTIONS } from "@/lib/screening";
 import { sendEmail, sendTemplateEmail } from "@/lib/email/send";
-import { getStaffAlertTemplateId } from "@/lib/settings";
+import { getStaffAlertEmail, getStaffAlertTemplateId } from "@/lib/settings";
 import {
   APPLICATION_CONFIRMATION_TEMPLATE_ALIAS,
   applicationConfirmationTemplateVariables,
+  applicationAdminUrl,
   staffAlertEmail,
 } from "@/lib/email/templates";
+import { formatDateTime } from "@/lib/history";
 import type { Database } from "@/lib/database.types";
 
 export type ApplicationFormState = { error: string; field?: string } | { ok: true } | null;
@@ -143,28 +145,29 @@ export async function submitApplication(
     const firstName = formData.get("first_name") as string;
     const lastName = formData.get("last_name") as string;
     const applicantEmail = formData.get("email") as string;
-    const staffAlertEmailAddress = process.env.STAFF_ALERT_EMAIL;
+    const staffAlertEmailAddress = await getStaffAlertEmail();
     const staffAlertTemplateId = await getStaffAlertTemplateId();
+    const applicationUrl = applicationAdminUrl(applicationId);
 
     function sendStaffAlert(to: string) {
       // A template set in Admin > Settings takes over from the hardcoded
-      // plain-text message -- variable names are whatever that template
-      // defines, so this supplies the same fields by both a generic and an
-      // applicant-specific name and lets Resend's per-variable
-      // fallback_value cover anything it doesn't recognize.
+      // plain-text message -- variable names here match the "New Applicant"
+      // Resend template built for this (position_title, applicant_name,
+      // applicant_email, submitted_at, application_url).
       if (staffAlertTemplateId) {
         return sendTemplateEmail({
           to,
           templateId: staffAlertTemplateId,
           variables: {
             applicant_name: `${firstName} ${lastName}`,
-            first_name: firstName,
-            last_name: lastName,
-            job_title: jobTitle,
+            applicant_email: applicantEmail,
+            position_title: jobTitle,
+            submitted_at: formatDateTime(new Date().toISOString()),
+            application_url: applicationUrl,
           },
         });
       }
-      return sendEmail({ to, ...staffAlertEmail(`${firstName} ${lastName}`, jobTitle) });
+      return sendEmail({ to, ...staffAlertEmail(`${firstName} ${lastName}`, jobTitle, applicationUrl) });
     }
 
     // Best-effort: a Resend outage or misconfiguration must never turn a

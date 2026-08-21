@@ -100,7 +100,7 @@ export default function JobPhotoField({
   }
 
   return (
-    <div className="flex flex-col gap-1.5 lg:w-1/2 lg:pr-2">
+    <div className="flex flex-col gap-1.5">
       <Label htmlFor={fieldId}>Photo (optional)</Label>
       <input type="hidden" name="current_photo_path" value={existingPhotoPath ?? ""} readOnly />
       <input type="hidden" name="remove_photo" value={photoRemoved ? "true" : ""} readOnly />

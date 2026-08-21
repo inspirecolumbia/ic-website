@@ -15,7 +15,7 @@ const baseApp: ApplicationListRow = {
   major: "Computer Science",
   yearOfStudy: "Junior",
   gpa: 3.9,
-  status: "under_review",
+  status: "still_in_consideration",
   createdAt: "2026-08-05T00:00:00.000Z",
   jobTitle: "Associate",
 };
@@ -34,7 +34,7 @@ describe("applicationsToExportRows", () => {
       yearOfStudy: "Junior",
       gpa: "3.9",
       jobTitle: "Associate",
-      status: "Under review",
+      status: "Still in Consideration",
     });
   });
 

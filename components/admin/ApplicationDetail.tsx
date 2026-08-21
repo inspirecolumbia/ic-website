@@ -39,22 +39,20 @@ type EmailLogEntry = Database["public"]["Tables"]["application_email_log"]["Row"
 
 const statusDotClass: Record<string, string> = {
   submitted: "bg-[var(--admin-text-muted)]",
-  under_review: "bg-[var(--admin-brand)]",
-  interviewing: "bg-[var(--admin-brand)]",
+  still_in_consideration: "bg-[var(--admin-brand)]",
+  round_1: "bg-[var(--admin-brand)]",
+  round_2: "bg-[var(--admin-brand)]",
   offer: "bg-[var(--admin-success)]",
-  hired: "bg-[var(--admin-success)]",
   rejected: "bg-[var(--admin-danger)]",
-  withdrawn: "bg-[var(--admin-danger)]",
 };
 
 const statusPillClass: Record<string, string> = {
   submitted: "bg-[var(--admin-neutral-soft)] text-[var(--admin-text-muted)]",
-  under_review: "bg-[var(--admin-brand-soft)] text-[var(--admin-brand)]",
-  interviewing: "bg-[var(--admin-brand-soft)] text-[var(--admin-brand)]",
+  still_in_consideration: "bg-[var(--admin-brand-soft)] text-[var(--admin-brand)]",
+  round_1: "bg-[var(--admin-brand-soft)] text-[var(--admin-brand)]",
+  round_2: "bg-[var(--admin-brand-soft)] text-[var(--admin-brand)]",
   offer: "bg-[var(--admin-success-soft)] text-[var(--admin-success)]",
-  hired: "bg-[var(--admin-success-soft)] text-[var(--admin-success)]",
   rejected: "bg-[var(--admin-danger-soft)] text-[var(--admin-danger)]",
-  withdrawn: "bg-[var(--admin-danger-soft)] text-[var(--admin-danger)]",
 };
 
 // Yes/no screening questions get a subtle indicator next to their answer,
@@ -228,42 +226,10 @@ export default function ApplicationDetail({
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start">
+      <div className="grid gap-3 lg:grid-cols-[1fr_320px] lg:items-start">
         {/* Main column */}
         <div className="flex flex-col gap-6">
-          <section aria-labelledby="screening-heading" className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
-            <h2 id="screening-heading" className="mb-3 text-base font-medium text-[var(--admin-text)]">
-              Screening answers
-            </h2>
-            {screeningAnswers.length === 0 ? (
-              <p className="text-sm text-[var(--admin-text-muted)]">None provided.</p>
-            ) : (
-              <dl className="flex flex-col gap-4">
-                {screeningAnswers.map((answer) => (
-                  <div key={answer.id} className="border-l-2 border-[var(--admin-border)] pl-3">
-                    <dt className="text-sm font-medium text-[var(--admin-text)]">{answer.question}</dt>
-                    <dd className="mt-1 text-sm whitespace-pre-wrap text-[var(--admin-text-muted)]">
-                      {YES_NO_QUESTIONS.has(answer.question) ? (
-                        <span className="inline-block rounded border border-[var(--admin-border-strong)] px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide text-[var(--admin-text)]">
-                          {answer.answer}
-                        </span>
-                      ) : (
-                        answer.answer
-                      )}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            )}
-          </section>
-
-          <section aria-labelledby="documents-heading" className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
-            <h2 id="documents-heading" className="mb-3 text-base font-medium text-[var(--admin-text)]">
-              Documents
-            </h2>
-            <DocumentViewer documents={documents} />
-          </section>
-
+          {/* Team preferences and details */}
           <section aria-labelledby="details-heading" className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
             <h2 id="details-heading" className="mb-3 text-base font-medium text-[var(--admin-text)]">
               Team preferences and details
@@ -294,23 +260,59 @@ export default function ApplicationDetail({
                   <dd className="text-sm text-[var(--admin-text)]">{application.school ?? "—"}</dd>
                 </div>
                 <div className="min-w-0">
-                  <dt className="text-xs text-[var(--admin-text-muted)]">School email</dt>
-                  <dd className="text-sm break-words text-[var(--admin-text)]">{application.schoolEmail ?? "—"}</dd>
+                  <dt className="text-xs text-[var(--admin-text-muted)]">Year of study</dt>
+                  <dd className="text-sm text-[var(--admin-text)]">{application.yearOfStudy ?? "—"}</dd>
+                 
                 </div>
                 <div>
                   <dt className="text-xs text-[var(--admin-text-muted)]">Major</dt>
                   <dd className="text-sm text-[var(--admin-text)]">{application.major ?? "—"}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-[var(--admin-text-muted)]">Year of study</dt>
-                  <dd className="text-sm text-[var(--admin-text)]">{application.yearOfStudy ?? "—"}</dd>
-                </div>
-                <div>
                   <dt className="text-xs text-[var(--admin-text-muted)]">GPA</dt>
                   <dd className="text-sm text-[var(--admin-text)]">{application.gpa ?? "—"}</dd>
+                  
+                </div>
+                <div className="col-span-2">
+                 <dt className="text-xs text-[var(--admin-text-muted)]">School email</dt>
+                  <dd className="text-sm break-words text-[var(--admin-text)]">{application.schoolEmail ?? "—"}</dd>
                 </div>
               </dl>
             </div>
+          </section>
+          {/* Documents */}
+          <section aria-labelledby="documents-heading" className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
+            <h2 id="documents-heading" className="mb-3 text-base font-medium text-[var(--admin-text)]">
+              Documents
+            </h2>
+            <DocumentViewer documents={documents} />
+          </section>
+          
+          {/* Screening answers */}
+          <section aria-labelledby="screening-heading" className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
+            <h2 id="screening-heading" className="mb-3 text-base font-medium text-[var(--admin-text)]">
+              Screening answers
+            </h2>
+            {screeningAnswers.length === 0 ? (
+              <p className="text-sm text-[var(--admin-text-muted)]">None provided.</p>
+            ) : (
+              <dl className="flex flex-col gap-4">
+                {screeningAnswers.map((answer) => (
+                  <div key={answer.id} className="border-l-2 border-[var(--admin-border)] pl-3">
+                    <dt className="text-sm font-medium text-[var(--admin-text)]">{answer.question}</dt>
+                    <dd className="mt-1 text-sm whitespace-pre-wrap text-[var(--admin-text-muted)]">
+                      {YES_NO_QUESTIONS.has(answer.question) ? (
+                        <span className="inline-block rounded border border-[var(--admin-border-strong)] px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide text-[var(--admin-text)]">
+                          {answer.answer}
+                        </span>
+                      ) : (
+                        answer.answer
+                      )}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
           </section>
         </div>
 
@@ -402,12 +404,16 @@ export default function ApplicationDetail({
               // rest of the page down every time a new entry is added.
               // Newest first, since that's what a reviewer checking in on
               // an application mid-review usually wants to see immediately.
-              <ul className="m-0 flex max-h-40 list-none flex-col gap-1 overflow-y-auto p-0 text-xs text-[var(--admin-text-muted)]">
+            <ul className="m-0 flex max-h-40 list-none flex-col gap-1 overflow-y-auto p-0 text-xs text-[var(--admin-text-muted)]">
                 {[...statusHistory].reverse().map((entry) => (
                   <li key={entry.id}>
-                    {formatDateTime(entry.created_at)}:{" "}
-                    {entry.old_status ? `${applicationStatusLabel(entry.old_status)} → ` : ""}
-                    {applicationStatusLabel(entry.new_status)}
+                    <div>{formatDateTime(entry.created_at)}:</div>
+                    <div className="pl-3">
+                      {entry.old_status
+                        ? `${applicationStatusLabel(entry.old_status)} --> `
+                        : ""}
+                      {applicationStatusLabel(entry.new_status)}
+                    </div>
                   </li>
                 ))}
               </ul>

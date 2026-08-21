@@ -14,13 +14,46 @@ async function seedTemplate(client: PoolClient) {
 }
 
 describe("application_templates RLS", () => {
-  it("anon cannot select templates", async () => {
+  it("anon can select templates", async () => {
+    // The public apply page (app/positions/[slug]/apply/page.tsx) needs to
+    // read a job's template name -- using the anon client, same as every
+    // other public-facing query -- to decide which form fields to render.
+    // Template names aren't sensitive, so this is a public read; write
+    // access stays staff/admin only (see the tests below).
     await withTransaction(async (client) => {
-      await seedTemplate(client);
+      const id = await seedTemplate(client);
       await impersonate(client, asAnon());
-      await expect(client.query("select * from public.application_templates")).rejects.toThrow(
-        /permission denied/i
-      );
+      const { rows } = await client.query("select * from public.application_templates where id = $1", [id]);
+      expect(rows).toHaveLength(1);
+    });
+  });
+
+  it("anon cannot insert templates", async () => {
+    await withTransaction(async (client) => {
+      await impersonate(client, asAnon());
+      await expect(
+        client.query(`insert into public.application_templates (name) values ('Anon Template')`)
+      ).rejects.toThrow(/permission denied|row-level security/i);
+    });
+  });
+
+  it("anon cannot update templates", async () => {
+    await withTransaction(async (client) => {
+      const id = await seedTemplate(client);
+      await impersonate(client, asAnon());
+      await expect(
+        client.query("update public.application_templates set name = 'Updated' where id = $1", [id])
+      ).rejects.toThrow(/permission denied|row-level security/i);
+    });
+  });
+
+  it("anon cannot delete templates", async () => {
+    await withTransaction(async (client) => {
+      const id = await seedTemplate(client);
+      await impersonate(client, asAnon());
+      await expect(
+        client.query("delete from public.application_templates where id = $1", [id])
+      ).rejects.toThrow(/permission denied|row-level security/i);
     });
   });
 
