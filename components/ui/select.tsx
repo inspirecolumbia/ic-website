@@ -63,7 +63,18 @@ function SelectContent({
   sideOffset = 4,
   align = "center",
   alignOffset = 0,
-  alignItemWithTrigger = true,
+  // false, not base-ui's own true default: "true" aligns the currently
+  // *selected* item with the trigger (native <select>-style) and skips
+  // normal viewport-collision handling to do it -- when a Select's value
+  // doesn't match any item (a not-yet-chosen field, e.g. a sentinel "no
+  // selection" value with no corresponding SelectItem), it has nothing to
+  // align to and the popup's position calculation can end up off-screen.
+  // "false" anchors the whole popup below (or above, if there's no room)
+  // the trigger as a block regardless of what's selected, like every other
+  // dropdown/combobox on the web -- always on-screen, and consistent
+  // regardless of whether a given Select happens to have a real SelectItem
+  // for its unselected state.
+  alignItemWithTrigger = false,
   ...props
 }: SelectPrimitive.Popup.Props &
   Pick<

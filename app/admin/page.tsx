@@ -67,7 +67,7 @@ export default async function AdminDashboardPage() {
         <div className="rounded-lg border border-[var(--admin-border)] bg-[var(--admin-surface)] p-4">
           <p className="m-0 font-medium text-[var(--admin-text)]">Jobs</p>
           <p className="m-0 mt-1 mb-3 text-sm text-[var(--admin-text-muted)]">
-            Create, edit, and publish job postings. Also includes change history.
+            Create, edit, and publish job postings.
           </p>
           <Link
             href="/admin/jobs"

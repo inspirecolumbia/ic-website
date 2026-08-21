@@ -38,6 +38,9 @@ function jobFromFormData(formData: FormData) {
     // "none" is the form's sentinel for "no template" -- a real Select
     // value can't be an empty string in this UI kit, so it can't just be "".
     application_template_id: templateId && templateId !== "none" ? templateId : null,
+    // "false" only when JobForm's apply-source radio is set to "Not
+    // accepting applications yet" -- see the published-status guard below.
+    accepting_applications: formData.get("accepting_applications") !== "false",
   };
 }
 
@@ -82,6 +85,18 @@ function joinNotices(...notices: (string | undefined)[]): string | undefined {
   return present.length ? present.join(" ") : undefined;
 }
 
+// "Post now" (JobForm.tsx's "When should this go live?" radio) forces
+// posting_date to now regardless of whatever was typed in -- live
+// immediately. It leaves closing_date alone (see createJob/updateJob):
+// posting live and having a deadline are independent choices, so a staffer
+// can post/repost now while still setting or keeping a real one.
+// JobsTable.tsx's row-menu "Post now"/"Repost" is a separate action
+// (postJobNow below) that does still clear closing_date, since that
+// one-click path has no form to carry a new deadline through.
+function isPostNow(formData: FormData): boolean {
+  return formData.get("post_now") === "true";
+}
+
 function photoUploadErrorMessage(err: unknown): string {
   return err instanceof JobPhotoUploadError
     ? err.message
@@ -98,6 +113,7 @@ function validateJobFields(job: ReturnType<typeof jobFromFormData>): string | nu
   if (!job.slug?.trim()) return "Web address is required.";
   if (!job.role?.trim()) return "Program / role is required.";
   if (!job.location?.trim()) return "Location is required.";
+  if (!job.commitment_type?.trim()) return "Commitment is required.";
   if (!job.description?.trim()) return "Description is required.";
   return null;
 }
@@ -107,10 +123,23 @@ export async function createJob(prevState: FormState, formData: FormData): Promi
   const fieldError = validateJobFields(job);
   if (fieldError) return { error: fieldError };
 
+  const postNow = isPostNow(formData);
+
   const now = nowIso();
-  const postingClamp = clampToNowIfPast(job.posting_date, now);
+  // Post now only forces posting_date -- closing_date (the deadline) is
+  // independent of "when does this go live" and always comes straight from
+  // the form, so a staffer can post/repost immediately while still setting
+  // or keeping a real deadline. Still clamped forward if it's in the past,
+  // same as the non-postNow path.
+  let postingClamp: { value: string | null; wasClamped: boolean };
+  if (postNow) {
+    job.posting_date = now;
+    postingClamp = { value: now, wasClamped: false };
+  } else {
+    postingClamp = clampToNowIfPast(job.posting_date, now);
+    job.posting_date = postingClamp.value;
+  }
   const closingClamp = clampToNowIfPast(job.closing_date, now);
-  job.posting_date = postingClamp.value;
   job.closing_date = closingClamp.value;
 
   const dateError = validateClosingDate(job.posting_date, job.closing_date);
@@ -118,7 +147,14 @@ export async function createJob(prevState: FormState, formData: FormData): Promi
 
   const photo = formData.get("photo");
   const supabase = createClerkSupabaseClient();
-  const { data, error } = await supabase.from("jobs").insert(job).select("id").single();
+  const { data, error } = await supabase
+    .from("jobs")
+    .insert({
+      ...job,
+      ...(postNow ? { status: "published" as const, published_at: now } : {}),
+    })
+    .select("id")
+    .single();
 
   if (error) return { error: error.message };
 
@@ -162,10 +198,22 @@ export async function updateJob(id: string, prevState: FormState, formData: Form
   const fieldError = validateJobFields(job);
   if (fieldError) return { error: fieldError };
 
+  const postNow = isPostNow(formData);
   const now = nowIso();
-  const postingClamp = clampToNowIfPast(job.posting_date, now);
+  // Post now only forces posting_date -- closing_date (the deadline) is
+  // independent of "when does this go live" and always comes straight from
+  // the form, so a staffer can repost immediately while still setting or
+  // keeping a real deadline. Still clamped forward if it's in the past,
+  // same as the non-postNow path.
+  let postingClamp: { value: string | null; wasClamped: boolean };
+  if (postNow) {
+    job.posting_date = now;
+    postingClamp = { value: now, wasClamped: false };
+  } else {
+    postingClamp = clampToNowIfPast(job.posting_date, now);
+    job.posting_date = postingClamp.value;
+  }
   const closingClamp = clampToNowIfPast(job.closing_date, now);
-  job.posting_date = postingClamp.value;
   job.closing_date = closingClamp.value;
 
   const dateError = validateClosingDate(job.posting_date, job.closing_date);
@@ -174,7 +222,9 @@ export async function updateJob(id: string, prevState: FormState, formData: Form
   const photo = formData.get("photo");
   const removePhoto = formData.get("remove_photo") === "true";
   const currentPhotoPath = (formData.get("current_photo_path") as string) || null;
-  const status = formData.get("status") as JobStatus;
+  // "Post now" overrides whatever the Status dropdown says -- the button's
+  // whole point is to publish live regardless of what was selected there.
+  const status: JobStatus = postNow ? "published" : (formData.get("status") as JobStatus);
   const supabase = createClerkSupabaseClient();
 
   // Default: keep whatever photo was already there.
@@ -368,22 +418,37 @@ export async function bulkDeleteHistory(
   return { deletedCount: data ?? 0 };
 }
 
+// Never called with "published" -- JobsTable.tsx's row menu uses the
+// dedicated postJobNow below for that, since publishing needs the
+// posting/closing date reset that a bare status flip doesn't do (see
+// isPostNow's comment above). Kept to a plain status update for the
+// transitions that don't need that: Unpublish (-> closed) and Archive.
 export async function transitionStatus(id: string, status: JobStatus): Promise<{ error: string } | null> {
   const supabase = createClerkSupabaseClient();
+  const { error } = await supabase.from("jobs").update({ status }).eq("id", id);
+  if (error) return { error: error.message };
 
-  if (status === "published") {
-    // published_at tracks the most recent publish, not the first -- always
-    // overwritten here so staff can see when a re-published job actually
-    // went live again, not the date of its original publish.
-    const { error } = await supabase
-      .from("jobs")
-      .update({ status, published_at: new Date().toISOString() })
-      .eq("id", id);
-    if (error) return { error: error.message };
-  } else {
-    const { error } = await supabase.from("jobs").update({ status }).eq("id", id);
-    if (error) return { error: error.message };
-  }
+  revalidatePath("/admin/jobs");
+  revalidatePath("/positions");
+  return null;
+}
+
+// The row-menu "Post now"/"Repost" action (JobsTable.tsx) -- same effect as
+// checking postNow through the full JobForm (see isPostNow above), just
+// without a form's worth of other fields to also save. Always wins over
+// whatever posting_date/closing_date the job already had.
+export async function postJobNow(id: string): Promise<{ error: string } | null> {
+  const supabase = createClerkSupabaseClient();
+  const now = nowIso();
+  // No form here to carry a new deadline, so (unlike JobForm's Post now,
+  // which leaves closing_date alone) this one-click action still clears it
+  // -- otherwise a repost would silently keep whatever old closing_date was
+  // on the job, which could already be in the past.
+  const { error } = await supabase
+    .from("jobs")
+    .update({ status: "published", posting_date: now, closing_date: null, published_at: now })
+    .eq("id", id);
+  if (error) return { error: error.message };
 
   revalidatePath("/admin/jobs");
   revalidatePath("/positions");

@@ -32,7 +32,24 @@ const nextConfig: NextConfig = {
         hostname: "*.supabase.co",
         pathname: "/storage/v1/object/public/job-photos/**",
       },
+      {
+        protocol: "http",
+        // The local Docker Supabase stack (`supabase start`) serves Storage
+        // over plain HTTP on this fixed port -- never matches a real
+        // deployment, so this is inert in prod, just lets a job photo
+        // uploaded while developing against the local stack actually render.
+        hostname: "127.0.0.1",
+        port: "54321",
+        pathname: "/storage/v1/object/public/job-photos/**",
+      },
     ],
+    // Next 16's SSRF guard blocks optimizing any URL that resolves to a
+    // private/loopback IP even if remotePatterns matches it -- needed only
+    // for the 127.0.0.1 pattern above (local dev), which is already scoped
+    // to a single fixed port and path. No real deployment's Supabase host
+    // is ever a local IP, so this has no effect outside a developer's own
+    // machine.
+    dangerouslyAllowLocalIP: true,
   },
   async redirects() {
     return [

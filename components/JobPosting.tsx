@@ -3,11 +3,6 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 
-export type JobQuickFact = {
-  label: string;
-  value: string;
-};
-
 export type Job = {
   id: string;
   slug: string;
@@ -16,9 +11,10 @@ export type Job = {
   location: string;
   commitmentType: string;
   postingDate: string;
-  quickFacts: JobQuickFact[];
+  deadline: string;
   description: string;
   applyUrl: string | null;
+  acceptingApplications: boolean;
   postedDate: string;
   lastPublished: string;
   photoUrl: string | null;
@@ -118,20 +114,17 @@ export default function JobPosting({ job }: { job: Job }) {
               <p className="m-0 text-[0.9rem] font-bold uppercase tracking-[0.08em] text-[var(--ink-muted)]">
                 {job.role}
               </p>
-              <h1 className="mb-4 mt-4 max-w-[22ch] [font-family:var(--font-serif)] text-[clamp(2rem,5vw,4.2rem)] leading-[1.1] font-semibold">
+              <h1 className="mb-4 mt-4 max-w-[22ch] [font-family:var(--font-serif)] text-[clamp(2rem,5vw,3.6rem)] leading-[1.1] font-semibold">
                 {job.title}
               </h1>
 
-              <div className="mb-8 flex flex-wrap gap-2">
-                {job.quickFacts.map((fact) => (
-                  <span
-                    key={fact.label}
-                    className="border border-[var(--line)] bg-[var(--card-public)] px-3 py-1.5 text-[0.85rem] font-medium text-[var(--ink-muted)]"
-                  >
-                    {fact.label}: {fact.value}
+              {job.deadline && (
+                <div className="mb-8 flex flex-wrap gap-2">
+                  <span className="border border-[var(--line)] bg-[var(--card-public)] px-3 py-1.5 text-[0.85rem] font-medium text-[var(--ink-muted)]">
+                    Application deadline: {job.deadline}
                   </span>
-                ))}
-              </div>
+                </div>
+              )}
 
               <ApplyButton jobTitle={job.title} jobSlug={job.slug} applyUrl={job.applyUrl} />
             </div>
