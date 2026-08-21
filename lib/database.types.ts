@@ -40,6 +40,7 @@ export type Database = {
           history_delete_enabled: boolean
           id: number
           resend_from_address: string | null
+          staff_alert_email: string | null
           staff_alert_template_id: string | null
           updated_at: string
           user_delete_enabled: boolean
@@ -49,6 +50,7 @@ export type Database = {
           history_delete_enabled?: boolean
           id?: number
           resend_from_address?: string | null
+          staff_alert_email?: string | null
           staff_alert_template_id?: string | null
           updated_at?: string
           user_delete_enabled?: boolean
@@ -58,6 +60,7 @@ export type Database = {
           history_delete_enabled?: boolean
           id?: number
           resend_from_address?: string | null
+          staff_alert_email?: string | null
           staff_alert_template_id?: string | null
           updated_at?: string
           user_delete_enabled?: boolean

@@ -21,7 +21,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { updateResendFromAddress, updateStaffAlertTemplateId, updateFeatureToggle } from "@/app/admin/settings/actions";
+import {
+  updateResendFromAddress,
+  updateStaffAlertTemplateId,
+  updateStaffAlertEmail,
+  sendTestStaffAlert,
+  updateFeatureToggle,
+} from "@/app/admin/settings/actions";
 import type { EmailTemplateSummary } from "@/lib/email/send";
 import FeatureToggleRow from "@/components/admin/FeatureToggleRow";
 
@@ -35,6 +41,7 @@ const DEFAULT_STAFF_ALERT_TEMPLATE = "__default__";
 export default function AppSettingsForm({
   initialFromAddress,
   initialStaffAlertTemplateId,
+  initialStaffAlertEmail,
   templates,
   applicationDeleteEnabled,
   userDeleteEnabled,
@@ -42,6 +49,7 @@ export default function AppSettingsForm({
 }: {
   initialFromAddress: string;
   initialStaffAlertTemplateId: string | null;
+  initialStaffAlertEmail: string;
   templates: EmailTemplateSummary[];
   applicationDeleteEnabled: boolean;
   userDeleteEnabled: boolean;
@@ -61,6 +69,15 @@ export default function AppSettingsForm({
   const [templateError, setTemplateError] = useState<string | null>(null);
   const [confirmTemplateOpen, setConfirmTemplateOpen] = useState(false);
 
+  const [staffAlertEmailValue, setStaffAlertEmailValue] = useState(initialStaffAlertEmail);
+  const [staffAlertEmailPending, startStaffAlertEmailTransition] = useTransition();
+  const [staffAlertEmailSuccessMessage, setStaffAlertEmailSuccessMessage] = useState<string | null>(null);
+  const [staffAlertEmailError, setStaffAlertEmailError] = useState<string | null>(null);
+
+  const [testAlertPending, startTestAlertTransition] = useTransition();
+  const [testAlertSuccessMessage, setTestAlertSuccessMessage] = useState<string | null>(null);
+  const [testAlertError, setTestAlertError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!successMessage) return;
     const timeout = setTimeout(() => setSuccessMessage(null), 4000);
@@ -72,6 +89,18 @@ export default function AppSettingsForm({
     const timeout = setTimeout(() => setTemplateSuccessMessage(null), 4000);
     return () => clearTimeout(timeout);
   }, [templateSuccessMessage]);
+
+  useEffect(() => {
+    if (!staffAlertEmailSuccessMessage) return;
+    const timeout = setTimeout(() => setStaffAlertEmailSuccessMessage(null), 4000);
+    return () => clearTimeout(timeout);
+  }, [staffAlertEmailSuccessMessage]);
+
+  useEffect(() => {
+    if (!testAlertSuccessMessage) return;
+    const timeout = setTimeout(() => setTestAlertSuccessMessage(null), 4000);
+    return () => clearTimeout(timeout);
+  }, [testAlertSuccessMessage]);
 
   function confirmedSave() {
     setError(null);
@@ -100,6 +129,30 @@ export default function AppSettingsForm({
         return;
       }
       setTemplateSuccessMessage("Saved.");
+    });
+  }
+
+  function saveStaffAlertEmail() {
+    setStaffAlertEmailError(null);
+    startStaffAlertEmailTransition(async () => {
+      const res = await updateStaffAlertEmail(staffAlertEmailValue);
+      if (res && "error" in res) {
+        setStaffAlertEmailError(res.error);
+        return;
+      }
+      setStaffAlertEmailSuccessMessage("Saved.");
+    });
+  }
+
+  function sendTestAlert() {
+    setTestAlertError(null);
+    startTestAlertTransition(async () => {
+      const res = await sendTestStaffAlert();
+      if (res && "error" in res) {
+        setTestAlertError(res.error);
+        return;
+      }
+      setTestAlertSuccessMessage("Sent.");
     });
   }
 
@@ -185,7 +238,45 @@ export default function AppSettingsForm({
 
       <fieldset className="mt-6 flex flex-col gap-3 rounded-lg border border-[var(--admin-border)] p-4">
         <legend className="px-1 text-sm font-semibold">New-application staff alert</legend>
+
+        {staffAlertEmailSuccessMessage && (
+          <p
+            role="status"
+            className="rounded-md bg-[var(--admin-success-soft)] px-3 py-2 text-sm text-[var(--admin-success)]"
+          >
+            {staffAlertEmailSuccessMessage}
+          </p>
+        )}
+        {staffAlertEmailError && (
+          <p role="alert" className="rounded-md bg-[var(--admin-danger-soft)] px-3 py-2 text-sm text-[var(--admin-danger)]">
+            {staffAlertEmailError}
+          </p>
+        )}
         <div className="flex flex-col gap-1.5">
+          <Label htmlFor="staff-alert-email">Send to</Label>
+          <Input
+            id="staff-alert-email"
+            value={staffAlertEmailValue}
+            onChange={(e) => setStaffAlertEmailValue(e.target.value)}
+            placeholder="Falls back to the STAFF_ALERT_EMAIL environment variable"
+          />
+          <p className="text-sm text-[var(--admin-text-muted)]">
+            Where new-application alerts get sent. Leave blank to use the STAFF_ALERT_EMAIL
+            environment variable -- set this to point alerts at yourself for testing, or at a
+            different inbox, without an env var change and redeploy.
+          </p>
+        </div>
+        <div>
+          <Button
+            type="button"
+            onClick={saveStaffAlertEmail}
+            disabled={staffAlertEmailPending || staffAlertEmailValue.trim() === initialStaffAlertEmail}
+          >
+            {staffAlertEmailPending ? "Saving..." : "Save"}
+          </Button>
+        </div>
+
+        <div className="flex flex-col gap-1.5 border-t border-[var(--admin-border)] pt-3">
           <Label htmlFor="staff-alert-template">Template</Label>
           <Select value={staffAlertTemplateId} onValueChange={(v) => setStaffAlertTemplateId(v as string)}>
             <SelectTrigger id="staff-alert-template">
@@ -206,9 +297,8 @@ export default function AppSettingsForm({
             </SelectContent>
           </Select>
           <p className="text-sm text-[var(--admin-text-muted)]">
-            Sent to the staff alert address (set via the STAFF_ALERT_EMAIL environment variable)
-            whenever a new application comes in. Leave on Default unless you want this routed
-            through a Resend template instead.
+            Sent to the address above whenever a new application comes in. Leave on Default unless
+            you want this routed through a Resend template instead.
           </p>
         </div>
         <div>
@@ -219,6 +309,28 @@ export default function AppSettingsForm({
           >
             {templatePending ? "Saving..." : "Save"}
           </Button>
+        </div>
+
+        <div className="flex flex-col gap-1.5 border-t border-[var(--admin-border)] pt-3">
+          {testAlertSuccessMessage && (
+            <p role="status" className="text-sm text-[var(--admin-success)]">
+              {testAlertSuccessMessage}
+            </p>
+          )}
+          {testAlertError && (
+            <p role="alert" className="text-sm text-[var(--admin-danger)]">
+              {testAlertError}
+            </p>
+          )}
+          <div>
+            <Button type="button" variant="secondary" onClick={sendTestAlert} disabled={testAlertPending}>
+              {testAlertPending ? "Sending..." : "Send test alert"}
+            </Button>
+          </div>
+          <p className="text-sm text-[var(--admin-text-muted)]">
+            Sends one real alert right now to whatever address and template are currently active
+            (using the saved settings above, not any unsaved edits).
+          </p>
         </div>
       </fieldset>
 

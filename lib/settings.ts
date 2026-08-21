@@ -24,6 +24,24 @@ export async function getStaffAlertTemplateId(): Promise<string | null> {
   return data?.staff_alert_template_id ?? null;
 }
 
+// Blank (the default) falls back to the STAFF_ALERT_EMAIL env var, same
+// shape as getResendFromAddress -- lets an admin point staff alerts at
+// themselves for testing, or at a different inbox, without an env var +
+// redeploy. Use getStaffAlertEmailOverride (raw, no fallback) when the
+// caller needs to know whether an override is actually set, e.g. to
+// populate the Settings form.
+export async function getStaffAlertEmail(): Promise<string | null> {
+  const supabase = createClient();
+  const { data } = await supabase.from("app_settings").select("staff_alert_email").eq("id", 1).maybeSingle();
+  return data?.staff_alert_email || process.env.STAFF_ALERT_EMAIL || null;
+}
+
+export async function getStaffAlertEmailOverride(): Promise<string | null> {
+  const supabase = createClient();
+  const { data } = await supabase.from("app_settings").select("staff_alert_email").eq("id", 1).maybeSingle();
+  return data?.staff_alert_email ?? null;
+}
+
 // Per-capability admin feature toggles (Admin > Settings > Feature
 // toggles). Default true on a failed/null read, matching the column's own
 // default -- every action gated by one of these also independently checks

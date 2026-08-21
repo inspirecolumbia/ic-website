@@ -37,10 +37,11 @@ describe("status change notifications", () => {
 });
 
 describe("staffAlertEmail", () => {
-  it("includes the applicant's full name and job title", () => {
-    const email = staffAlertEmail("Ada Lovelace", "Associate");
+  it("includes the applicant's full name, job title, and application link", () => {
+    const email = staffAlertEmail("Ada Lovelace", "Associate", "https://inspirecolumbia.org/admin/applications/abc123");
     expect(email.subject).toContain("Ada Lovelace");
     expect(email.subject).toContain("Associate");
     expect(email.text).toContain("Ada Lovelace");
+    expect(email.text).toContain("https://inspirecolumbia.org/admin/applications/abc123");
   });
 });
