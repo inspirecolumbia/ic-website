@@ -4,6 +4,7 @@ import AppSettingsForm from "@/components/admin/AppSettingsForm";
 import {
   getResendFromAddress,
   getStaffAlertTemplateId,
+  getStaffAlertEmailOverride,
   getApplicationDeleteEnabled,
   getUserDeleteEnabled,
   getHistoryDeleteEnabled,
@@ -27,6 +28,7 @@ export default async function SettingsPage() {
   const [
     fromAddress,
     staffAlertTemplateId,
+    staffAlertEmailOverride,
     templateOptions,
     applicationDeleteEnabled,
     userDeleteEnabled,
@@ -34,6 +36,7 @@ export default async function SettingsPage() {
   ] = await Promise.all([
     getResendFromAddress(),
     getStaffAlertTemplateId(),
+    getStaffAlertEmailOverride(),
     listStaffAlertTemplateOptions(),
     getApplicationDeleteEnabled(),
     getUserDeleteEnabled(),
@@ -47,6 +50,7 @@ export default async function SettingsPage() {
       <AppSettingsForm
         initialFromAddress={fromAddress ?? ""}
         initialStaffAlertTemplateId={staffAlertTemplateId}
+        initialStaffAlertEmail={staffAlertEmailOverride ?? ""}
         templates={"templates" in templateOptions ? templateOptions.templates : []}
         applicationDeleteEnabled={applicationDeleteEnabled}
         userDeleteEnabled={userDeleteEnabled}

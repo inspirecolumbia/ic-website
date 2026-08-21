@@ -1,5 +1,15 @@
 export type EmailTemplate = { subject: string; text: string; html: string };
 
+// Matches the hardcoded production domain already used in app/sitemap.ts,
+// app/robots.ts, and app/layout.tsx's metadataBase -- no env var for this
+// anywhere in the codebase, so this follows the same established pattern
+// rather than introducing a new one just for this link.
+export const SITE_URL = "https://inspirecolumbia.org";
+
+export function applicationAdminUrl(applicationId: string): string {
+  return `${SITE_URL}/admin/applications/${applicationId}`;
+}
+
 function htmlParagraphs(lines: string[]): string {
   return lines.map((line) => `<p>${line}</p>`).join("\n");
 }
@@ -24,11 +34,8 @@ export function applicationConfirmationTemplateVariables(
 // only and must never notify the applicant (see updateApplicationStatus in
 // app/admin/actions.ts and tests/rls/... asserting no email fires on a
 // status change).
-export function staffAlertEmail(applicantName: string, jobTitle: string): EmailTemplate {
+export function staffAlertEmail(applicantName: string, jobTitle: string, applicationUrl: string): EmailTemplate {
   const subject = `New application: ${applicantName} for ${jobTitle}`;
-  const lines = [
-    `${applicantName} just applied for ${jobTitle}.`,
-    "Review it in the admin dashboard under Applications.",
-  ];
+  const lines = [`${applicantName} just applied for ${jobTitle}.`, `Review it here: ${applicationUrl}`];
   return { subject, text: lines.join("\n\n"), html: htmlParagraphs(lines) };
 }

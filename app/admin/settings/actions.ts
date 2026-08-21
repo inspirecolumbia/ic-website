@@ -3,8 +3,11 @@
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { createClerkSupabaseClient } from "@/lib/supabase/clerk";
-import { isValidFromAddress } from "@/lib/settings";
-import { listPublishedEmailTemplates, type EmailTemplateSummary } from "@/lib/email/send";
+import { getStaffAlertEmail, getStaffAlertTemplateId, isValidFromAddress } from "@/lib/settings";
+import { sendEmail, sendTemplateEmail, listPublishedEmailTemplates, type EmailTemplateSummary } from "@/lib/email/send";
+import { staffAlertEmail, SITE_URL } from "@/lib/email/templates";
+import { formatDateTime } from "@/lib/history";
+import { EMAIL_PATTERN } from "@/lib/applications";
 
 export async function updateResendFromAddress(address: string): Promise<{ error: string } | null> {
   const { sessionClaims } = await auth();
@@ -53,6 +56,63 @@ export async function updateStaffAlertTemplateId(templateId: string | null): Pro
   if (error) return { error: error.message };
 
   revalidatePath("/admin/settings");
+  return null;
+}
+
+// null/blank clears the override, falling back to the STAFF_ALERT_EMAIL env
+// var (see getStaffAlertEmail in lib/settings.ts) -- same null-means-default
+// shape as updateStaffAlertTemplateId above.
+export async function updateStaffAlertEmail(address: string | null): Promise<{ error: string } | null> {
+  const { sessionClaims } = await auth();
+  const role = sessionClaims?.user_role as string | undefined;
+  if (role !== "admin") return { error: "Only admins can change this." };
+
+  const trimmed = address?.trim() || null;
+  if (trimmed && !EMAIL_PATTERN.test(trimmed)) {
+    return { error: "Enter a valid email address, or leave it blank to use the default." };
+  }
+
+  const supabase = createClerkSupabaseClient();
+  const { error } = await supabase.from("app_settings").update({ staff_alert_email: trimmed }).eq("id", 1);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/settings");
+  return null;
+}
+
+// Sends one real staff alert to whatever address/template is currently
+// active, so an admin can confirm the override actually works without
+// waiting on a real application to come in.
+export async function sendTestStaffAlert(): Promise<{ error: string } | null> {
+  const { sessionClaims } = await auth();
+  const role = sessionClaims?.user_role as string | undefined;
+  if (role !== "admin") return { error: "Only admins can do this." };
+
+  const [to, templateId] = await Promise.all([getStaffAlertEmail(), getStaffAlertTemplateId()]);
+  if (!to) return { error: "No staff alert email is set (override or STAFF_ALERT_EMAIL env var)." };
+
+  const applicationUrl = `${SITE_URL}/admin/applications`;
+
+  try {
+    if (templateId) {
+      await sendTemplateEmail({
+        to,
+        templateId,
+        variables: {
+          applicant_name: "Test Applicant",
+          applicant_email: "test.applicant@example.com",
+          position_title: "a test position",
+          submitted_at: formatDateTime(new Date().toISOString()),
+          application_url: applicationUrl,
+        },
+      });
+    } else {
+      await sendEmail({ to, ...staffAlertEmail("Test Applicant", "a test position", applicationUrl) });
+    }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to send the test alert." };
+  }
+
   return null;
 }
 
