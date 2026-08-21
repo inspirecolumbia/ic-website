@@ -67,7 +67,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { transitionStatus, duplicateJob, reorderJobs, deleteJob, bulkDeleteJobs } from "@/app/admin/actions";
+import { transitionStatus, postJobNow, duplicateJob, reorderJobs, deleteJob, bulkDeleteJobs } from "@/app/admin/actions";
 import { getDisplayStatus, type DisplayStatus } from "@/lib/jobs";
 import type { Database } from "@/lib/database.types";
 
@@ -104,17 +104,25 @@ const statusLabel: Record<DisplayStatus, string> = {
   archived: "Archived",
 };
 
-function rowActions(displayStatus: DisplayStatus): { label: string; value: JobStatus }[] {
+type RowAction = { label: string; value: JobStatus; postNow?: boolean };
+
+// postNow actions route through the confirm dialog + postJobNow (below),
+// not transitionStatus -- publishing needs the posting/closing date reset
+// (see app/admin/actions.ts's isPostNow comment), which a bare status flip
+// doesn't do. Available regardless of accepting_applications -- a job can
+// be Published while "not accepting applications" (its /apply route just
+// 404s), e.g. to show up on /positions while staff finish setting it up.
+function rowActions(displayStatus: DisplayStatus): RowAction[] {
   switch (displayStatus) {
     case "draft":
-      return [{ label: "Publish", value: "published" }];
+      return [{ label: "Post now", value: "published", postNow: true }];
     case "published":
     case "scheduled":
     case "expired":
       return [{ label: "Unpublish", value: "closed" }];
     case "closed":
       return [
-        { label: "Publish", value: "published" },
+        { label: "Repost", value: "published", postNow: true },
         { label: "Archive", value: "archived" },
       ];
     case "archived":
@@ -214,6 +222,10 @@ function SortableRow({
       onActionError(result && "error" in result && result.error ? result.error : null);
     });
   }
+  // Which postNow action (if any) is pending confirmation -- null means the
+  // dialog is closed. Holds the label ("Post now" vs "Repost") so the
+  // dialog can use the same wording the row menu item showed.
+  const [confirmPostLabel, setConfirmPostLabel] = useState<string | null>(null);
 
   return (
     <TableRow
@@ -354,8 +366,12 @@ function SortableRow({
                 <DropdownMenuItem onClick={() => onEdit(job)}>Edit</DropdownMenuItem>
                 {actions.map((a) => (
                   <DropdownMenuItem
-                    key={a.value}
-                    onClick={() => runRowAction(() => transitionStatus(job.id, a.value))}
+                    key={a.label}
+                    onClick={() =>
+                      a.postNow
+                        ? setConfirmPostLabel(a.label)
+                        : runRowAction(() => transitionStatus(job.id, a.value))
+                    }
                   >
                     {a.label}
                   </DropdownMenuItem>
@@ -381,6 +397,37 @@ function SortableRow({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+
+          <AlertDialog
+            open={confirmPostLabel !== null}
+            onOpenChange={(open) => {
+              if (!open) setConfirmPostLabel(null);
+            }}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {confirmPostLabel} &quot;{job.title}&quot;?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  This publishes the job live immediately, sets its posting date to now, and
+                  clears any closing date. Add a new closing date afterward from Edit if you want
+                  one.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    runRowAction(() => postJobNow(job.id));
+                    setConfirmPostLabel(null);
+                  }}
+                >
+                  {confirmPostLabel}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </TableCell>
     </TableRow>

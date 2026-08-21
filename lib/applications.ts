@@ -40,12 +40,11 @@ export function applicationRowToApplication(row: ApplicationRow): Application {
 
 const statusLabels: Record<ApplicationStatus, string> = {
   submitted: "Submitted",
-  under_review: "Under review",
-  interviewing: "Interviewing",
+  still_in_consideration: "Still in Consideration",
+  round_1: "Round 1",
+  round_2: "Round 2",
   offer: "Offer",
-  hired: "Hired",
   rejected: "Rejected",
-  withdrawn: "Withdrawn",
 };
 
 export function applicationStatusLabel(status: ApplicationStatus): string {
@@ -218,7 +217,11 @@ export function buildApplicationInsertPayload(input: ApplicationSubmissionInput)
   const teamErrorField = (predicate: (teamName: string) => boolean): string =>
     input.teamSlots?.find((slot) => predicate(slot.teamName))?.field ?? "team_choice_1";
 
-  if (input.teamPreferences.length !== 3) {
+  // Some job forms (e.g. the general application, which has no Team
+  // preferences section) never submit any team choices at all -- 0 is as
+  // valid as a complete set of 3. Anything in between is a partially filled
+  // section on a form that does have it, still an error.
+  if (input.teamPreferences.length !== 0 && input.teamPreferences.length !== 3) {
     throw new ApplicationValidationError(
       "Please select 3 team preferences.",
       teamErrorField((teamName) => !teamName)

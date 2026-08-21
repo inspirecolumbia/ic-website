@@ -386,10 +386,19 @@ export default function JobApplicationForm({
   jobId,
   jobTitle,
   jobSlug,
+  showTeamPreferences = true,
 }: {
   jobId: string;
   jobTitle: string;
   jobSlug: string;
+  // False for jobs on the General Application template -- everything else
+  // about the form (fields, validation, submission) is identical to the
+  // Associate template, just without this one section. submitApplication /
+  // the submit_application RPC accept either zero team preferences (this
+  // form) or a complete set of 3 (the Associate form), so simply never
+  // rendering the section is enough -- no separate "which template" signal
+  // needs to reach the server action.
+  showTeamPreferences?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(submitApplication, null);
   const { bannerRef, erroredField, clearFieldError, fieldErrorProps } = useServerFormError(
@@ -755,6 +764,7 @@ export default function JobApplicationForm({
               </div>
             </FormSection>
 
+            {showTeamPreferences && (
             <FormSection title="Team preferences">
               <div className="mb-6 flex flex-col gap-4">
                 {TEAM_DESCRIPTIONS.map((team) => (
@@ -880,6 +890,7 @@ export default function JobApplicationForm({
                 </div>
               </div>
             </FormSection>
+            )}
 
             <FormSection title="Eligibility">
               {(["livesNearColumbia", "authorizedToWork", "needsVisaSponsorship"] as const).map((key) => {

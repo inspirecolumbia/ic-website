@@ -101,7 +101,7 @@ describe("applications RLS", () => {
       const appId = await seedApplication(client, jobId);
       await impersonate(client, asAnon());
       await expect(
-        client.query("update public.applications set status = 'under_review' where id = $1", [appId])
+        client.query("update public.applications set status = 'still_in_consideration' where id = $1", [appId])
       ).rejects.toThrow(/permission denied/i);
     });
   });
@@ -154,7 +154,7 @@ describe("applications RLS", () => {
       const appId = await seedApplication(client, jobId);
       await impersonate(client, asStaff());
       await expect(
-        client.query("update public.applications set status = 'under_review' where id = $1", [appId])
+        client.query("update public.applications set status = 'still_in_consideration' where id = $1", [appId])
       ).resolves.toBeDefined();
     });
   });

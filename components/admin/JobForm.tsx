@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import JobPhotoField from "@/components/admin/JobPhotoField";
 import type { FormState } from "@/app/admin/actions";
 import type { Database } from "@/lib/database.types";
@@ -106,15 +107,51 @@ export default function JobForm({
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   const [state, formAction, pending] = useActionState(action, null);
-  const templateLabels: Record<string, string> = {
-    none: "None (use Apply URL below)",
-    ...Object.fromEntries(templates.map((t) => [t.id, t.name])),
-  };
+  const templateLabels: Record<string, string> = Object.fromEntries(templates.map((t) => [t.id, t.name]));
   const [slug, setSlug] = useState(job?.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(Boolean(job));
   const nowLocal = isoToLocalInputValue(new Date().toISOString());
+  // The posting date input's `min` would otherwise reject the job's own
+  // already-past posting date the moment "now" ticks past it -- every
+  // already-published job has one by definition -- silently blocking any
+  // save (even ones that never touch this field) with native "value must
+  // be later" validation. Floored at the existing value instead of always
+  // at `now`, so a stale-but-already-live posting date stays valid until
+  // someone deliberately types a new one.
+  const existingPostingLocal = isoToLocalInputValue(job?.posting_date);
+  const minPostingLocal = existingPostingLocal && existingPostingLocal < nowLocal ? existingPostingLocal : nowLocal;
   const [postingDateIso, setPostingDateIso] = useState(job?.posting_date ?? "");
   const [closingDateIso, setClosingDateIso] = useState(job?.closing_date ?? "");
+
+  // apply_url always wins over the template when a job has both (see
+  // app/positions/[slug]/apply/page.tsx), so only one of these two fields
+  // is ever meaningful at a time -- this radio makes that explicit instead
+  // of leaving it to the two fields' help text. Both branches stay
+  // controlled (not just conditionally rendered with defaultValue) so
+  // switching back to a branch restores whatever was typed there, even
+  // though only the active one's `name` attribute -- and therefore its
+  // value -- actually gets submitted. "not_accepting" is a 3rd branch, not
+  // a real application_templates row -- there's no form to render for it,
+  // so /apply always 404s regardless of Status (see
+  // app/positions/[slug]/apply/page.tsx) -- this job can still be Published
+  // (e.g. to show up on /positions while staff finish setting it up, or
+  // just to test that /apply 404s for real).
+  const [applySource, setApplySource] = useState<"template" | "external" | "not_accepting">(
+    job && !job.accepting_applications ? "not_accepting" : job?.apply_url ? "external" : "template"
+  );
+  const [templateId, setTemplateId] = useState(
+    job ? (job.application_template_id ?? "none") : templates.length === 1 ? templates[0].id : "none"
+  );
+  const [applyUrlValue, setApplyUrlValue] = useState(job?.apply_url ?? "");
+
+  // Defaults to "now" for a brand-new job (or one that's never had a
+  // posting date) so creating a job and saving it is enough to post it
+  // immediately, per the original ask. Defaults to "schedule" when a real
+  // posting date is already on the job, so opening Edit and clicking Save
+  // can't silently wipe a deliberately-set one the staffer didn't actually
+  // mean to touch. Closing date is independent of this -- see its own field
+  // below -- so it doesn't factor into this default.
+  const [postTiming, setPostTiming] = useState<"now" | "schedule">(job?.posting_date ? "schedule" : "now");
 
   useEffect(() => {
     if (state && "ok" in state) onSuccess?.(state.id ?? job?.id ?? "", state.notice);
@@ -140,6 +177,8 @@ export default function JobForm({
         onChange={() => onDirtyChange?.(true)}
         className="flex flex-1 flex-col gap-4 overflow-y-auto p-4"
       >
+        <input type="hidden" name="post_now" value={postTiming === "now" ? "true" : "false"} readOnly />
+
         {state && "error" in state && (
           <p className="rounded-md bg-[var(--admin-danger-soft)] px-3 py-2 text-sm text-[var(--admin-danger)]">
             {state.error}
@@ -217,8 +256,11 @@ export default function JobForm({
 
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="commitment_type">Commitment</Label>
-            <Select name="commitment_type" defaultValue={job?.commitment_type}>
+            <Label htmlFor="commitment_type">
+              Commitment
+              <Required />
+            </Label>
+            <Select name="commitment_type" defaultValue={job?.commitment_type} required>
               <SelectTrigger id="commitment_type" className="w-full">
                 <SelectValue placeholder="Choose a commitment type" />
               </SelectTrigger>
@@ -238,39 +280,162 @@ export default function JobForm({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="posting_date">Posting date and time</Label>
-            <input type="hidden" name="posting_date" value={postingDateIso} readOnly />
+            <Label htmlFor="closing_date">Closing date and time (optional)</Label>
+            <input type="hidden" name="closing_date" value={closingDateIso} readOnly />
             <Input
-              id="posting_date"
+              id="closing_date"
               type="datetime-local"
-              min={nowLocal}
-              defaultValue={isoToLocalInputValue(job?.posting_date)}
-              onChange={(e) => setPostingDateIso(localInputValueToIso(e.target.value))}
+              // Same reasoning as minPostingLocal above -- floored at the
+              // job's own existing closing date (if earlier) so an
+              // already-past deadline doesn't block every future save until
+              // someone deliberately picks a new one. Independent of
+              // postTiming/postingDateIso -- the deadline isn't gated
+              // behind when the job goes live.
+              min={(() => {
+                const naturalFloor =
+                  postTiming === "schedule" && postingDateIso ? isoToLocalInputValue(postingDateIso) : nowLocal;
+                const existingClosingLocal = isoToLocalInputValue(job?.closing_date);
+                return existingClosingLocal && existingClosingLocal < naturalFloor
+                  ? existingClosingLocal
+                  : naturalFloor;
+              })()}
+              defaultValue={isoToLocalInputValue(job?.closing_date)}
+              onChange={(e) => setClosingDateIso(localInputValueToIso(e.target.value))}
             />
             <p className="text-sm text-muted-foreground">
-              Controls when this goes public. If status is published, it goes live at this date
-              and time automatically.
+              If set, this posting automatically stops showing publicly after this date and time.
+              Leave blank to keep it open indefinitely.
             </p>
           </div>
         </div>
 
-        <div className="flex flex-col gap-1.5 lg:w-1/2 lg:pr-2">
-          <Label htmlFor="closing_date">Closing date and time (optional)</Label>
-          <input type="hidden" name="closing_date" value={closingDateIso} readOnly />
-          <Input
-            id="closing_date"
-            type="datetime-local"
-            min={postingDateIso ? isoToLocalInputValue(postingDateIso) : nowLocal}
-            defaultValue={isoToLocalInputValue(job?.closing_date)}
-            onChange={(e) => setClosingDateIso(localInputValueToIso(e.target.value))}
-          />
-          <p className="text-sm text-muted-foreground">
-            If set, this posting automatically stops showing publicly after this date and time.
-            Leave blank to keep it open indefinitely.
-          </p>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="flex flex-col gap-3">
+            <Label>How do applicants apply?</Label>
+            <input
+              type="hidden"
+              name="accepting_applications"
+              value={applySource === "not_accepting" ? "false" : "true"}
+              readOnly
+            />
+            <RadioGroup
+              value={applySource}
+              onValueChange={(v) => setApplySource(v as "template" | "external" | "not_accepting")}
+              className="flex flex-col gap-2"
+            >
+              <label htmlFor="apply_source-template" className="flex items-center gap-2 text-sm">
+                <RadioGroupItem id="apply_source-template" value="template" />
+                Built-in application form
+              </label>
+              <label htmlFor="apply_source-external" className="flex items-center gap-2 text-sm">
+                <RadioGroupItem id="apply_source-external" value="external" />
+                External URL
+              </label>
+              <label htmlFor="apply_source-not_accepting" className="flex items-center gap-2 text-sm">
+                <RadioGroupItem id="apply_source-not_accepting" value="not_accepting" />
+                Not accepting applications yet
+              </label>
+            </RadioGroup>
+          </div>
+
+          {applySource === "template" && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="application_template_id">Application template</Label>
+              <p className="text-sm text-muted-foreground">
+                The built-in form applicants fill out.
+              </p>
+              <Select
+                name="application_template_id"
+                value={templateId}
+                onValueChange={(v) => setTemplateId(v as string)}
+              >
+                <SelectTrigger id="application_template_id" className="w-full">
+                  <SelectValue placeholder="Choose a template">
+                    {(value: string) => templateLabels[value] ?? "Choose a template"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {applySource === "external" && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="apply_url">Apply URL</Label>
+              <p className="text-sm text-muted-foreground">
+                Applicants are sent here instead of Inspire Columbia&apos;s built-in form.
+              </p>
+              <Input
+                id="apply_url"
+                name="apply_url"
+                type="url"
+                required
+                placeholder="https://forms.gle/..."
+                value={applyUrlValue}
+                onChange={(e) => setApplyUrlValue(e.target.value)}
+              />
+            </div>
+          )}
+
+          {applySource === "not_accepting" && (
+            <p className="text-sm text-muted-foreground">
+              No form or URL is set, so applicants can&apos;t apply -- its Apply page shows a
+              plain not-found page, even if this job is Published.
+            </p>
+          )}
         </div>
 
-        <JobPhotoField existingPhotoPath={job?.photo_path ?? null} onDirtyChange={onDirtyChange} />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="flex flex-col gap-3">
+            <Label>When should this go live?</Label>
+            <RadioGroup
+              value={postTiming}
+              onValueChange={(v) => setPostTiming(v as "now" | "schedule")}
+              className="flex flex-col gap-2"
+            >
+              <label htmlFor="post_timing-now" className="flex items-center gap-2 text-sm">
+                <RadioGroupItem id="post_timing-now" value="now" />
+                Post now
+              </label>
+              <label htmlFor="post_timing-schedule" className="flex items-center gap-2 text-sm">
+                <RadioGroupItem id="post_timing-schedule" value="schedule" />
+                Schedule for later
+              </label>
+            </RadioGroup>
+          </div>
+
+          {postTiming === "now" ? (
+            <p className="text-sm text-muted-foreground">
+              Saving sets the posting date to now and publishes this job live immediately.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="posting_date">
+                Posting date and time
+                <Required />
+              </Label>
+              <input type="hidden" name="posting_date" value={postingDateIso} readOnly />
+              <Input
+                id="posting_date"
+                type="datetime-local"
+                required
+                min={minPostingLocal}
+                defaultValue={isoToLocalInputValue(job?.posting_date)}
+                onChange={(e) => setPostingDateIso(localInputValueToIso(e.target.value))}
+              />
+              <p className="text-sm text-muted-foreground">
+                Controls when this goes public. If status is published, it goes live at this date
+                and time automatically.
+              </p>
+            </div>
+          )}
+        </div>
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="description">
@@ -292,52 +457,7 @@ export default function JobForm({
           />
         </div>
 
-        <div className="flex flex-col gap-1.5 lg:w-1/2 lg:pr-2">
-          <Label htmlFor="application_template_id">Application template</Label>
-          <p className="text-sm text-muted-foreground">
-            The built-in form applicants fill out. Leave as &quot;None&quot; if you&apos;re
-            sending applicants to an external Apply URL below instead.
-          </p>
-          <Select
-            name="application_template_id"
-            defaultValue={
-              job
-                ? (job.application_template_id ?? "none")
-                : templates.length === 1
-                  ? templates[0].id
-                  : "none"
-            }
-          >
-            <SelectTrigger id="application_template_id" className="w-full">
-              <SelectValue placeholder="Choose a template">
-                {(value: string) => templateLabels[value] ?? value}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None (use Apply URL below)</SelectItem>
-              {templates.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="apply_url">Apply URL (optional)</Label>
-          <p className="text-sm text-muted-foreground">
-            Leave blank to use Inspire Columbia&apos;s built-in application form. Set this only if
-            applicants should be sent to an external form instead.
-          </p>
-          <Input
-            id="apply_url"
-            name="apply_url"
-            type="url"
-            placeholder="https://forms.gle/..."
-            defaultValue={job?.apply_url ?? ""}
-          />
-        </div>
+        <JobPhotoField existingPhotoPath={job?.photo_path ?? null} onDirtyChange={onDirtyChange} />
 
         {job && (
           <div className="flex flex-col gap-1.5 lg:w-1/2 lg:pr-2">
@@ -353,6 +473,11 @@ export default function JobForm({
                 <SelectItem value="archived">Archived</SelectItem>
               </SelectContent>
             </Select>
+            {applySource === "not_accepting" && (
+              <p className="text-sm text-muted-foreground">
+                Published here just means the listing shows up -- its Apply page will still 404.
+              </p>
+            )}
           </div>
         )}
       </form>

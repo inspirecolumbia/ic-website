@@ -49,7 +49,7 @@ describe("applicationRowToApplication", () => {
       major: "Computer Science",
       year_of_study: "Junior",
       gpa: 3.9,
-      status: "under_review",
+      status: "still_in_consideration",
       created_at: "2026-08-05T00:00:00.000Z",
       updated_at: "2026-08-05T00:00:00.000Z",
     };
@@ -66,7 +66,7 @@ describe("applicationRowToApplication", () => {
       major: "Computer Science",
       yearOfStudy: "Junior",
       gpa: 3.9,
-      status: "under_review",
+      status: "still_in_consideration",
       createdAt: "2026-08-05T00:00:00.000Z",
     });
   });
@@ -293,12 +293,11 @@ describe("buildApplicationInsertPayload", () => {
 describe("applicationStatusLabel", () => {
   const statuses: ApplicationStatus[] = [
     "submitted",
-    "under_review",
-    "interviewing",
+    "still_in_consideration",
+    "round_1",
+    "round_2",
     "offer",
-    "hired",
     "rejected",
-    "withdrawn",
   ];
 
   it.each(statuses)("returns a non-empty label for %s", (status) => {
