@@ -63,9 +63,9 @@ export async function submitApplication(
   if (!resumeFile || resumeFile.size === 0) {
     return { error: "A resume upload is required.", field: "resume" };
   }
-  if (!transcriptFile || transcriptFile.size === 0) {
-    return { error: "An unofficial transcript upload is required.", field: "transcript" };
-  }
+  // The transcript is optional: an empty file input submits a zero-size
+  // File, which is treated as "not provided".
+  const transcriptToUpload = transcriptFile && transcriptFile.size > 0 ? transcriptFile : null;
 
   // Checked before any upload so an over-limit answer fails fast without
   // leaving an orphaned Storage file. The form enforces the same cap
@@ -85,18 +85,20 @@ export async function submitApplication(
     // orphaned Storage file with no referencing row -- accepted for this
     // branch, no cleanup job in scope.
     let resumeUpload: Awaited<ReturnType<typeof uploadApplicationDocument>>;
-    let transcriptUpload: Awaited<ReturnType<typeof uploadApplicationDocument>>;
+    let transcriptUpload: Awaited<ReturnType<typeof uploadApplicationDocument>> | null = null;
     try {
       resumeUpload = await uploadApplicationDocument(supabase, applicationId, "resume", resumeFile);
     } catch (err) {
       if (err instanceof ApplicationUploadError) return { error: err.message, field: "resume" };
       throw err;
     }
-    try {
-      transcriptUpload = await uploadApplicationDocument(supabase, applicationId, "transcript", transcriptFile);
-    } catch (err) {
-      if (err instanceof ApplicationUploadError) return { error: err.message, field: "transcript" };
-      throw err;
+    if (transcriptToUpload) {
+      try {
+        transcriptUpload = await uploadApplicationDocument(supabase, applicationId, "transcript", transcriptToUpload);
+      } catch (err) {
+        if (err instanceof ApplicationUploadError) return { error: err.message, field: "transcript" };
+        throw err;
+      }
     }
 
     const gpaRaw = formData.get("gpa") as string | null;
@@ -109,18 +111,22 @@ export async function submitApplication(
       lastName: formData.get("last_name") as string,
       email: formData.get("email") as string,
       phone: (formData.get("phone") as string | null) ?? "",
-      schoolEmail: formData.get("school_email") as string,
+      schoolEmail: (formData.get("school_email") as string | null) ?? "",
       school: formData.get("school") as string,
       major: formData.get("major") as string,
       yearOfStudy: formData.get("year_of_study") as string,
       gpa: gpaRaw ? Number(gpaRaw) : undefined,
       documents: [
         { documentType: "resume", fileName: resumeUpload.fileName, storagePath: resumeUpload.storagePath },
-        {
-          documentType: "transcript",
-          fileName: transcriptUpload.fileName,
-          storagePath: transcriptUpload.storagePath,
-        },
+        ...(transcriptUpload
+          ? [
+              {
+                documentType: "transcript" as const,
+                fileName: transcriptUpload.fileName,
+                storagePath: transcriptUpload.storagePath,
+              },
+            ]
+          : []),
       ],
       teamPreferences,
       teamSlots,
