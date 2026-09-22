@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { EMAIL_PATTERN, PHONE_PATTERN } from "@/lib/applications";
-import { SCHOOL_EMAIL_DOMAINS, SCHOOLS, SCREENING_QUESTIONS, TEAMS } from "@/lib/screening";
+import {
+  OTHER_SCHOOL,
+  SCHOOL_EMAIL_DOMAINS,
+  SCHOOL_OPTIONS,
+  SCHOOLS,
+  SCREENING_QUESTIONS,
+  TEAMS,
+} from "@/lib/screening";
 
 // Static drift-guard, not a live check: the submit_application RPC (see
 // supabase/migrations/20260810150000_submit_application_rpc_phone_and_school_email_validation.sql)
@@ -45,6 +52,9 @@ const SQL_SCHOOL_EMAIL_DOMAINS: Record<string, string[]> = {
   "University of South Carolina, Columbia": ["email.sc.edu", "sc.edu"],
 };
 
+// Keep in sync with the RPC's v_other_school.
+const SQL_OTHER_SCHOOL = "Other";
+
 describe("TS/SQL business-rule literal sync", () => {
   it("lib/screening.ts's TEAMS matches the RPC's team whitelist", () => {
     expect([...TEAMS]).toEqual(SQL_VALID_TEAMS);
@@ -71,5 +81,13 @@ describe("TS/SQL business-rule literal sync", () => {
 
   it("lib/screening.ts's SCHOOLS matches the RPC's college whitelist (SCHOOL_EMAIL_DOMAINS' keys)", () => {
     expect([...SCHOOLS].sort()).toEqual(Object.keys(SQL_SCHOOL_EMAIL_DOMAINS).sort());
+  });
+
+  it("lib/screening.ts's OTHER_SCHOOL matches the RPC's v_other_school", () => {
+    expect(OTHER_SCHOOL).toBe(SQL_OTHER_SCHOOL);
+  });
+
+  it("the school dropdown offers every listed school plus 'Other'", () => {
+    expect(SCHOOL_OPTIONS).toEqual([...SCHOOLS, OTHER_SCHOOL]);
   });
 });

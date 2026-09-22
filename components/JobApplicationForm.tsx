@@ -22,7 +22,7 @@ import { useServerFormError } from "@/lib/hooks/useServerFormError";
 import { cn } from "@/lib/utils";
 import {
   MAX_WHAT_APPEALS_WORDS,
-  SCHOOLS,
+  SCHOOL_OPTIONS,
   SCREENING_QUESTIONS,
   TEAM_6_PARENT_TITLE,
   TEAM_6_SUB_TRACKS,
@@ -96,6 +96,7 @@ function FileUploadField({
   name,
   label,
   errored,
+  required = true,
   resetVersion,
   onChangeClearError,
 }: {
@@ -103,6 +104,10 @@ function FileUploadField({
   name: string;
   label: ReactNode;
   errored?: boolean;
+  // False for an optional document (e.g. the transcript) -- drops the
+  // native `required` constraint; the caller is responsible for the
+  // "(optional)" label text in place of the red asterisk.
+  required?: boolean;
   // Bumped once per completed submission attempt (see JobApplicationForm).
   // React's form actions run a real native form.reset() after every
   // attempt, success or failure, which silently clears this field's actual
@@ -155,7 +160,7 @@ function FileUploadField({
     if (inputRef.current) inputRef.current.value = "";
   }
 
-  const labelText = typeof label === "string" ? label : "Document";
+  const labelText = typeof label === "string" ? label.replace(/ \(optional\)$/, "") : "Document";
 
   return (
     <div data-field={id}>
@@ -220,7 +225,7 @@ function FileUploadField({
         name={name}
         type="file"
         accept=".pdf,application/pdf"
-        required
+        required={required}
         className="sr-only"
         onChange={(e) => {
           const newFile = e.target.files?.[0];
@@ -619,8 +624,7 @@ export default function JobApplicationForm({
                 </div>
                 <div {...fieldErrorProps("school_email")} className={cn(erroredField === "school_email" && erroredFieldClassName)}>
                   <Label htmlFor="school_email" className="mb-1.5">
-                    School email
-                    <Required />
+                    School email (optional)
                   </Label>
                   <Input
                     id="school_email"
@@ -631,7 +635,6 @@ export default function JobApplicationForm({
                     // and sharing the same autocomplete category would
                     // invite the browser to fill the same value into both.
                     autoComplete="off"
-                    required
                     value={schoolEmail}
                     onChange={(e) => {
                       setSchoolEmail(e.target.value);
@@ -674,7 +677,7 @@ export default function JobApplicationForm({
                   <div className="mt-2">
                     <SelectField
                       name="school"
-                      options={SCHOOLS}
+                      options={SCHOOL_OPTIONS}
                       placeholder="Choose your school"
                       resetVersion={resetVersion}
                       onChangeClearError={() => clearFieldError("school")}
@@ -756,12 +759,8 @@ export default function JobApplicationForm({
                 <FileUploadField
                   id="transcript"
                   name="transcript"
-                  label={
-                    <>
-                      Unofficial transcript
-                      <Required />
-                    </>
-                  }
+                  label="Unofficial transcript (optional)"
+                  required={false}
                   errored={erroredField === "transcript"}
                   resetVersion={resetVersion}
                   onChangeClearError={() => clearFieldError("transcript")}

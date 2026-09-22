@@ -1,5 +1,5 @@
 import type { Database } from "./database.types";
-import { SCHOOL_EMAIL_DOMAINS, SCHOOLS, TEAMS } from "./screening";
+import { OTHER_SCHOOL, SCHOOL_EMAIL_DOMAINS, SCHOOLS, TEAMS } from "./screening";
 
 type ApplicationRow = Database["public"]["Tables"]["applications"]["Row"];
 type ApplicationStatus = Database["public"]["Enums"]["application_status"];
@@ -168,6 +168,7 @@ export function buildApplicationInsertPayload(input: ApplicationSubmissionInput)
   const firstName = input.firstName.trim();
   const lastName = input.lastName.trim();
   const email = input.email.trim().toLowerCase();
+  // Optional -- blank is stored as null, not an empty string.
   const schoolEmail = input.schoolEmail.trim().toLowerCase();
   const school = input.school.trim();
   const major = input.major.trim();
@@ -176,33 +177,34 @@ export function buildApplicationInsertPayload(input: ApplicationSubmissionInput)
   if (!firstName) throw new ApplicationValidationError("First name is required.", "first_name");
   if (!lastName) throw new ApplicationValidationError("Last name is required.", "last_name");
   if (!EMAIL_PATTERN.test(email)) throw new ApplicationValidationError("A valid email is required.", "email");
-  if (!EMAIL_PATTERN.test(schoolEmail)) {
-    throw new ApplicationValidationError("A valid school email is required.", "school_email");
+  if (schoolEmail && !EMAIL_PATTERN.test(schoolEmail)) {
+    throw new ApplicationValidationError("Please enter a valid school email.", "school_email");
   }
   if (!major) throw new ApplicationValidationError("Major is required.", "major");
   if (!yearOfStudy) throw new ApplicationValidationError("Year of study is required.", "year_of_study");
 
-  // No free-typed "Other" school anymore -- school must be one of the fixed
-  // SCHOOLS list, so it always has a known domain to validate against below.
-  if (!SCHOOLS.includes(school)) {
+  // School is one of the fixed SCHOOLS list or the literal "Other" (no
+  // free-typed name). Only a listed school has a known domain to check the
+  // school email against, and only when one was actually provided.
+  if (!SCHOOLS.includes(school) && school !== OTHER_SCHOOL) {
     throw new ApplicationValidationError("Please select a valid school.", "school");
   }
 
-  const allowedSchoolEmailDomains = SCHOOL_EMAIL_DOMAINS[school];
-  const schoolEmailDomain = schoolEmail.split("@")[1] ?? "";
-  if (!allowedSchoolEmailDomains.includes(schoolEmailDomain)) {
-    throw new ApplicationValidationError(
-      `School email must be a ${school} address (e.g. name@${allowedSchoolEmailDomains[0]}).`,
-      "school_email"
-    );
+  if (schoolEmail && school !== OTHER_SCHOOL) {
+    const allowedSchoolEmailDomains = SCHOOL_EMAIL_DOMAINS[school];
+    const schoolEmailDomain = schoolEmail.split("@")[1] ?? "";
+    if (!allowedSchoolEmailDomains.includes(schoolEmailDomain)) {
+      throw new ApplicationValidationError(
+        `School email must be a ${school} address (e.g. name@${allowedSchoolEmailDomains[0]}).`,
+        "school_email"
+      );
+    }
   }
 
+  // Only the resume is required. The transcript is optional and, when
+  // omitted, simply has no entry in `documents`.
   const resume = input.documents.find((doc) => doc.documentType === "resume");
-  const transcript = input.documents.find((doc) => doc.documentType === "transcript");
   if (!resume?.storagePath) throw new ApplicationValidationError("A resume upload is required.", "resume");
-  if (!transcript?.storagePath) {
-    throw new ApplicationValidationError("An unofficial transcript upload is required.", "transcript");
-  }
 
   if (input.gpa !== undefined && (Number.isNaN(input.gpa) || input.gpa < 0 || input.gpa > 4)) {
     throw new ApplicationValidationError("GPA must be a number between 0 and 4.", "gpa");

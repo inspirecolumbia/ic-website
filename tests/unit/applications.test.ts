@@ -153,11 +153,32 @@ describe("buildApplicationInsertPayload", () => {
     );
   });
 
-  it("throws ApplicationValidationError when transcript is missing", () => {
+  it("accepts a submission with no transcript", () => {
     const documents = baseInput.documents.filter((doc) => doc.documentType !== "transcript");
-    expect(() => buildApplicationInsertPayload({ ...baseInput, documents })).toThrow(
-      ApplicationValidationError
-    );
+    const payload = buildApplicationInsertPayload({ ...baseInput, documents });
+    expect((payload.p_documents as { documentType: string }[]).map((doc) => doc.documentType)).toEqual([
+      "resume",
+    ]);
+  });
+
+  it("accepts a blank school email and passes it through as an empty string", () => {
+    const payload = buildApplicationInsertPayload({ ...baseInput, schoolEmail: "  " });
+    expect(payload.p_school_email).toBe("");
+  });
+
+  it("accepts 'Other' as the school, with any school email", () => {
+    const payload = buildApplicationInsertPayload({
+      ...baseInput,
+      school: "Other",
+      schoolEmail: "ada@gmail.com",
+    });
+    expect(payload.p_school).toBe("Other");
+    expect(payload.p_school_email).toBe("ada@gmail.com");
+  });
+
+  it("accepts 'Other' as the school with no school email", () => {
+    const payload = buildApplicationInsertPayload({ ...baseInput, school: "Other", schoolEmail: "" });
+    expect(payload.p_school).toBe("Other");
   });
 
   it("lowercases a mixed-case email in the resulting payload", () => {

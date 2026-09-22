@@ -136,10 +136,9 @@ export function countWords(value: string): number {
   return trimmed ? trimmed.split(/\s+/).length : 0;
 }
 
-// The fixed, exhaustive list of Columbia-area schools accepted as a valid
-// college -- no free-typed "Other" fallback anymore, both here and in
-// submit_application's validation. Keep in sync with the keys of
-// SCHOOL_EMAIL_DOMAINS below (every allowed school has a known domain).
+// The fixed list of Columbia-area schools that have a known email domain.
+// Keep in sync with the keys of SCHOOL_EMAIL_DOMAINS below. Applicants
+// outside this list pick OTHER_SCHOOL instead (see SCHOOL_OPTIONS).
 export const SCHOOLS = [
   "Allen University",
   "Benedict College",
@@ -149,11 +148,20 @@ export const SCHOOLS = [
   "University of South Carolina, Columbia",
 ];
 
+// Stored as-is in applications.school when an applicant's school isn't in
+// SCHOOLS -- no free-typed name is collected. Keep in sync with the
+// submit_application RPC's v_other_school.
+export const OTHER_SCHOOL = "Other";
+
+// What the form's School dropdown offers: the fixed list plus "Other".
+export const SCHOOL_OPTIONS = [...SCHOOLS, OTHER_SCHOOL];
+
 // Verified student-email domains for each school above (2026-08-10). Used
 // to reject a school-email/school mismatch (e.g. picking USC but entering a
-// gmail.com address) -- skipped entirely for a free-typed "Other" school,
-// since there's no known domain to check against. Keep in sync with the
-// submit_application RPC's v_school_email_domains.
+// gmail.com address) -- skipped for OTHER_SCHOOL, since there's no known
+// domain to check against, and when the (optional) school email is left
+// blank. Keep in sync with the submit_application RPC's
+// v_school_email_domains.
 export const SCHOOL_EMAIL_DOMAINS: Record<string, string[]> = {
   "Allen University": ["allenuniversity.edu"],
   "Benedict College": ["benedict.edu"],

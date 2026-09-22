@@ -61,13 +61,24 @@ test.describe("happy path", () => {
 });
 
 test.describe("college field", () => {
-  test("never offers Other as a school option", async ({ page }) => {
-    const schoolOptions = await page.locator('label[for^="school-"]').allTextContents();
-    expect(schoolOptions).toHaveLength(6);
-    expect(schoolOptions).not.toContain("Other");
+  test("offers Other as a school option, stored as plain 'Other'", async ({ page }) => {
+    await page.locator("#school").click();
+    const schoolOptions = await page.getByRole("option").filter({ visible: true }).allTextContents();
+    expect(schoolOptions).toHaveLength(7);
+    expect(schoolOptions).toContain("Other");
+    await page.keyboard.press("Escape");
 
-    const yearOfStudyOptions = await page.locator('label[for^="year_of_study-"]').allTextContents();
-    expect(yearOfStudyOptions).toContain("Other");
+    await fillApplicationForm(page, { school: "Other", schoolEmail: "" });
+    await submit(page);
+
+    await expect(page.getByRole("heading", { name: "Application submitted" })).toBeVisible();
+  });
+
+  test("submits without a transcript or a school email", async ({ page }) => {
+    await fillApplicationForm(page, { transcriptFile: null, schoolEmail: "" });
+    await submit(page);
+
+    await expect(page.getByRole("heading", { name: "Application submitted" })).toBeVisible();
   });
 });
 
@@ -86,10 +97,7 @@ test.describe("team preference validation", () => {
     await expect(page.locator("#email")).toHaveValue(email);
     await expect(page.locator("#phone")).toHaveValue("8035550100");
     await expect(page.locator("#major")).toHaveValue("Computer Science");
-    await expect(radioOption(page, "University of South Carolina, Columbia")).toHaveAttribute(
-      "aria-checked",
-      "true"
-    );
+    await expect(page.locator("#school")).toContainText("University of South Carolina, Columbia");
     await expect(radioOption(page, "Junior")).toHaveAttribute("aria-checked", "true");
     await expect(eligibilityRadioOption(page, SCREENING_QUESTIONS.livesNearColumbia.question, "Yes")).toHaveAttribute(
       "aria-checked",
