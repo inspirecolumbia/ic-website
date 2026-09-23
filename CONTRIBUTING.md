@@ -137,3 +137,19 @@ When writing a migration, prefer expand-style changes over contract-style change
 
 - **Expand**: new nullable columns, new tables, widened validation. Safe to land before the code that uses them, since the currently deployed app just ignores schema it doesn't reference yet.
 - **Contract**: drops, renames, tightened constraints. These need careful sequencing with the code deploy, since the currently deployed code may still depend on what you're about to remove or rename.
+
+### Rotating SUPABASE_ACCESS_TOKEN
+
+The `SUPABASE_ACCESS_TOKEN` GitHub Actions secret authenticates the Supabase CLI in both `.github/workflows/deploy-dev-migrations.yml` and `.github/workflows/deploy-migrations.yml` (the prod one). It's the same secret for both, and it has an expiry, so it needs rotating before it lapses.
+
+When it lapses or is otherwise invalid, both workflows fail immediately at the `supabase link` step with `Unauthorized`.
+
+**It must be a legacy access token, not one of Supabase's newer scoped/fine-grained tokens.** A scoped token, even with Full access on every permission, hits a known bug where `supabase link` fails with `Your account does not have the necessary privileges to access this endpoint` -- the CLI needs to reveal the project's API keys, and that call isn't supported for scoped tokens yet ([supabase/supabase#50244](https://github.com/supabase/supabase/issues/50244), [supabase/cli#6392](https://github.com/supabase/cli/issues/6392)). Widening individual permissions on a scoped token won't fix this.
+
+To rotate it:
+
+1. In the Supabase dashboard, go to **Account > Access Tokens > Generate new token**.
+2. On the configure screen, click **Create legacy token** (a text link next to "Resource access", not the main flow) -- this skips the project/permission pickers entirely, since a legacy token has full account access.
+3. Name it clearly, e.g. `ic-website-ci-legacy`, set an expiry, and copy the value immediately.
+4. Update the `SUPABASE_ACCESS_TOKEN` secret in the repo's **Settings > Secrets and variables > Actions**.
+5. Re-run the failed workflow (from the Actions tab, or `gh run rerun <run-id>`) rather than pushing a new commit.
