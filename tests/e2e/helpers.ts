@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { Pool } from "pg";
 import {
   SCHOOL_EMAIL_DOMAINS,
@@ -113,6 +113,16 @@ const DEFAULT_TEAM_CHOICES: string[] = [
   "Marketing and Press Strategy",
 ];
 
+// Picks an option from one of the form's base-ui Select dropdowns. Waits for
+// the popup to fully close before returning: clicking the next dropdown's
+// trigger while the previous popup is still animating out swallows the click
+// (and old popups stay mounted but hidden, so only visible options count).
+async function selectDropdownOption(page: Page, triggerSelector: string, optionName: string): Promise<void> {
+  await page.locator(triggerSelector).click();
+  await page.getByRole("option", { name: optionName, exact: true }).filter({ visible: true }).click();
+  await expect(page.getByRole("option").filter({ visible: true })).toHaveCount(0);
+}
+
 // Fills every field of the application form to a valid state (or to
 // whatever overrides are given), without submitting. Callers submit
 // themselves so each test can assert on the pre-submit DOM state too.
@@ -125,7 +135,9 @@ export async function fillApplicationForm(page: Page, opts: FillOptions = {}): P
   await page.locator("#school_email").fill(opts.schoolEmail ?? schoolEmailFor("ada"));
   await page.locator("#phone").fill(opts.phone ?? "8035550100");
 
-  await clickRadioOption(page, opts.school ?? SCHOOL);
+  // School is a dropdown (not a radio list) since the form's School field
+  // has 7 options; same trigger-then-option pattern as the team choices.
+  await selectDropdownOption(page, "#school", opts.school ?? SCHOOL);
   await clickRadioOption(page, opts.yearOfStudy ?? "Junior");
 
   await page.locator("#major").fill(opts.major ?? "Computer Science");
@@ -143,8 +155,7 @@ export async function fillApplicationForm(page: Page, opts: FillOptions = {}): P
   const teamChoices = opts.teamChoices ?? DEFAULT_TEAM_CHOICES;
   const triggerIds = ["team_choice_1", "team_choice_2", "team_choice_3"];
   for (let i = 0; i < teamChoices.length; i++) {
-    await page.locator(`#${triggerIds[i]}`).click();
-    await page.getByRole("option", { name: teamChoices[i], exact: true }).click();
+    await selectDropdownOption(page, `#${triggerIds[i]}`, teamChoices[i]);
     if (teamChoices[i] === TEAM_6_PARENT_TITLE && opts.subTrack !== null) {
       await clickRadioOption(page, opts.subTrack ?? TEAM_6_SUB_TRACKS[0]);
     }

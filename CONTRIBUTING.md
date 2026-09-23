@@ -7,6 +7,7 @@ This is the website for Inspire Columbia, a Next.js app with a Supabase database
 - [Getting started](#getting-started)
   - [Environment setup](#environment-setup)
 - [How to contribute code](#how-to-contribute-code)
+- [Images and static assets](#images-and-static-assets)
 - [Common commands](#common-commands)
 - [Testing](#testing)
   - [Setting up the local Supabase stack](#setting-up-the-local-supabase-stack)
@@ -51,6 +52,18 @@ flowchart LR
 - Once your change is on `dev`, it gets promoted to production (`main`) periodically by a `tech-leads` member, via a separate PR that does require an approval. `main`'s ruleset only allows **merge** commits, not squash or rebase (an earlier rebase-only setup was tried and reverted -- rebasing `dev`'s squashed commits onto `main` isn't actually a clean fast-forward once `dev` has moved on, which happens constantly with more than one person committing), so each promoted feature stays visible as its own commit.
 - Direct pushes to either `dev` or `main` are blocked for everyone, including admins, with no exceptions -- everything, human or automated, goes through a PR.
 - **Syncing `main` back into `dev` after a promotion is automatic.** A workflow (`.github/workflows/sync-dev-from-main.yml`) fires on every push to `main`, opens a "Sync main back into dev" PR (merge method, not squash), and merges it itself once CI passes. Since `main` only ever advances via a promotion from `dev` (the CI check above guarantees that), this PR is never anything but commits `dev`'s own history already produced, so it merges cleanly essentially always. You'll only ever need to act on it if it genuinely can't merge (a real conflict -- possible but rare), in which case it's left open for you.
+
+## Images and static assets
+
+Anything in `public/` is copied into every deployment Vercel keeps, production and every preview build alike. An oversized file is stored once per retained deployment, so a handful of full-resolution photos can quietly add up to gigabytes and trip the free plan's deployment-storage limit.
+
+Before adding an image to `public/`:
+
+- Resize it to a web-appropriate size first. Roughly 2000px on the long edge for a full-width photo, 800px for a headshot, and aim for a few hundred KB rather than several MB. A photo straight off a phone or camera is 20 to 40 times larger than it needs to be.
+- Run `npm run images:optimize`. It downsizes anything oversized under `public/`, strips EXIF metadata, and re-encodes at a sensible quality. It's idempotent, so running it when nothing needs changing is a no-op. `npm run images:check` reports without rewriting, in case you want to see what it would touch.
+- Rendering doesn't change either way. Every image on the site goes through `next/image`, which serves each visitor a resized version regardless of the source file's size. Shrinking the source is only about what gets stored and shipped in the deployment.
+
+Content that staff or applicants upload at runtime (job photos, resumes) goes in Supabase Storage, not `public/`. `public/` is for assets that ship with the code.
 
 ## Common commands
 
@@ -124,3 +137,19 @@ When writing a migration, prefer expand-style changes over contract-style change
 
 - **Expand**: new nullable columns, new tables, widened validation. Safe to land before the code that uses them, since the currently deployed app just ignores schema it doesn't reference yet.
 - **Contract**: drops, renames, tightened constraints. These need careful sequencing with the code deploy, since the currently deployed code may still depend on what you're about to remove or rename.
+
+### Rotating SUPABASE_ACCESS_TOKEN
+
+The `SUPABASE_ACCESS_TOKEN` GitHub Actions secret authenticates the Supabase CLI in both `.github/workflows/deploy-dev-migrations.yml` and `.github/workflows/deploy-migrations.yml` (the prod one). It's the same secret for both, and it has an expiry, so it needs rotating before it lapses.
+
+When it lapses or is otherwise invalid, both workflows fail immediately at the `supabase link` step with `Unauthorized`.
+
+**It must be a legacy access token, not one of Supabase's newer scoped/fine-grained tokens.** A scoped token, even with Full access on every permission, hits a known bug where `supabase link` fails with `Your account does not have the necessary privileges to access this endpoint` -- the CLI needs to reveal the project's API keys, and that call isn't supported for scoped tokens yet ([supabase/supabase#50244](https://github.com/supabase/supabase/issues/50244), [supabase/cli#6392](https://github.com/supabase/cli/issues/6392)). Widening individual permissions on a scoped token won't fix this.
+
+To rotate it:
+
+1. In the Supabase dashboard, go to **Account > Access Tokens > Generate new token**.
+2. On the configure screen, click **Create legacy token** (a text link next to "Resource access", not the main flow) -- this skips the project/permission pickers entirely, since a legacy token has full account access.
+3. Name it clearly, e.g. `ic-website-ci-legacy`, set an expiry, and copy the value immediately.
+4. Update the `SUPABASE_ACCESS_TOKEN` secret in the repo's **Settings > Secrets and variables > Actions**.
+5. Re-run the failed workflow (from the Actions tab, or `gh run rerun <run-id>`) rather than pushing a new commit.

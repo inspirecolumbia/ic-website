@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "images:optimize": "node scripts/optimize-images.mjs",
+    "images:check": "node scripts/optimize-images.mjs --check",
     "types:gen": "npx supabase gen types typescript --local > lib/database.types.ts",
     "test": "vitest run",
     "test:unit": "vitest run --project unit",

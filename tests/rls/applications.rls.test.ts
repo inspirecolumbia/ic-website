@@ -38,19 +38,34 @@ async function seedApplication(client: Client, jobId: string, overrides: { email
 // supabase/migrations/20260809120400_submit_application_rpc.sql). Dummy
 // storage paths are fine here since this exercises the DB layer directly,
 // no real Storage upload involved.
-async function submitViaRpc(client: Client, jobId: string, overrides: { email?: string } = {}) {
+async function submitViaRpc(
+  client: Client,
+  jobId: string,
+  overrides: { email?: string; schoolEmail?: string; school?: string; withTranscript?: boolean } = {}
+) {
+  const documents = [
+    { documentType: "resume", fileName: "r.pdf", storagePath: "applications/x/resume.pdf" },
+    ...(overrides.withTranscript === false
+      ? []
+      : [{ documentType: "transcript", fileName: "t.pdf", storagePath: "applications/x/transcript.pdf" }]),
+  ];
   return client.query(
     `select public.submit_application(
        gen_random_uuid(), $1::uuid, 'Ada', 'Lovelace', $2, '8035550100',
-       'ada@email.sc.edu', 'University of South Carolina, Columbia', 'Computer Science', 'Junior', null,
-       '[{"documentType":"resume","fileName":"r.pdf","storagePath":"applications/x/resume.pdf"},
-         {"documentType":"transcript","fileName":"t.pdf","storagePath":"applications/x/transcript.pdf"}]'::jsonb,
+       $3, $4, 'Computer Science', 'Junior', null,
+       $5::jsonb,
        '[{"teamName":"Nonprofit Finances and Legal","rank":1},
          {"teamName":"Technology and Web Development","rank":2},
          {"teamName":"Production","rank":3}]'::jsonb,
        '[]'::jsonb
      )`,
-    [jobId, overrides.email ?? `ada-${Math.random().toString(36).slice(2)}@example.com`]
+    [
+      jobId,
+      overrides.email ?? `ada-${Math.random().toString(36).slice(2)}@example.com`,
+      overrides.schoolEmail ?? "ada@email.sc.edu",
+      overrides.school ?? "University of South Carolina, Columbia",
+      JSON.stringify(documents),
+    ]
   );
 }
 
@@ -60,6 +75,69 @@ describe("applications RLS", () => {
       const jobId = await seedJob(client, "published");
       await impersonate(client, asAnon());
       await expect(submitViaRpc(client, jobId, { email: "ada@example.com" })).resolves.toBeDefined();
+    });
+  });
+
+  it("anon can submit without a transcript", async () => {
+    await withTransaction(async (client) => {
+      const jobId = await seedJob(client, "published");
+      await impersonate(client, asAnon());
+      await expect(submitViaRpc(client, jobId, { withTranscript: false })).resolves.toBeDefined();
+    });
+  });
+
+  it("anon still cannot submit without a resume", async () => {
+    await withTransaction(async (client) => {
+      const jobId = await seedJob(client, "published");
+      await impersonate(client, asAnon());
+      await expect(
+        client.query(
+          `select public.submit_application(
+             gen_random_uuid(), $1::uuid, 'Ada', 'Lovelace', 'ada@example.com', '8035550100',
+             '', 'Other', 'Computer Science', 'Junior', null,
+             '[]'::jsonb, '[]'::jsonb, '[]'::jsonb
+           )`,
+          [jobId]
+        )
+      ).rejects.toThrow(/resume upload is required/i);
+    });
+  });
+
+  it("anon can submit with a blank school email", async () => {
+    await withTransaction(async (client) => {
+      const jobId = await seedJob(client, "published");
+      await impersonate(client, asAnon());
+      await expect(submitViaRpc(client, jobId, { schoolEmail: "" })).resolves.toBeDefined();
+    });
+  });
+
+  it("anon can submit with 'Other' as the school and any school email", async () => {
+    await withTransaction(async (client) => {
+      const jobId = await seedJob(client, "published");
+      await impersonate(client, asAnon());
+      await expect(
+        submitViaRpc(client, jobId, { school: "Other", schoolEmail: "ada@gmail.com" })
+      ).resolves.toBeDefined();
+    });
+  });
+
+  it("anon still cannot submit an unlisted school other than 'Other'", async () => {
+    await withTransaction(async (client) => {
+      const jobId = await seedJob(client, "published");
+      await impersonate(client, asAnon());
+      await expect(
+        submitViaRpc(client, jobId, { school: "Trident Technical College", schoolEmail: "" })
+      ).rejects.toThrow(/select a valid school/i);
+    });
+  });
+
+  it("anon still cannot submit a school email that mismatches a listed school's domain", async () => {
+    await withTransaction(async (client) => {
+      const jobId = await seedJob(client, "published");
+      await impersonate(client, asAnon());
+      await expect(submitViaRpc(client, jobId, { schoolEmail: "ada@gmail.com" })).rejects.toThrow(
+        /must match the selected school/i
+      );
     });
   });
 
