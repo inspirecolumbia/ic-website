@@ -45,7 +45,8 @@ export default async function ApplyPage({
 }) {
   const { slug } = await params;
   const row = await getPublishedJob(slug);
-  if (!row) notFound();
+  // Same as the posting page: a dead slug goes to the open positions list.
+  if (!row) redirect("/positions");
 
   const job = jobRowToJob(row);
 

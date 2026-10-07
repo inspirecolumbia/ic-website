@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import JobPosting from "@/components/JobPosting";
 import { createClient } from "@/lib/supabase/public";
@@ -59,7 +59,9 @@ export default async function JobPage({
 }) {
   const { slug } = await params;
   const row = await getPublishedJob(slug);
-  if (!row) notFound();
+  // Links to a posting outlive the posting itself (closed, unpublished, or
+  // mistyped) -- send those to the open positions list instead of a 404.
+  if (!row) redirect("/positions");
 
   return (
     <>
